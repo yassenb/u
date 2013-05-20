@@ -19,7 +19,7 @@ tokenDefs = [
                   "\}.*
                 ///]
   ['number',    /^\d+/]          # todo: floating point numbers
-  ['',          ///^(
+  ['',          ///^(?:
                       ==
                     | \?\{
                     | @\{
@@ -27,21 +27,23 @@ tokenDefs = [
                     | \+\+
                     | [\(\)\[\]\{\};_]
                 )///]
-  ['symbol',    /^[a-z\$][a-z0-9]*/i]
-  ['symbol',    ///^(?:
+  ['name',      /^[a-z][a-z0-9]*/i]
+  ['name',      /^\$(f|t|pinf|ninf|e|pi|np)?/]
+  ['name',      ///^(?:
                       <:
                     | >:
                     | \|:
+                    | =>
                     | \|\|
                     | <=
-                    | =>
+                    | >=
                     | <>
                     | ,,
                     | >>
                     | <<
                     | %%
                 )///]
-  ['symbol',    /^[\+\-\*:\^=<>\/\\\.\#!%~\|,&]/]
+  ['name',      /^[\+\-\*:\^=<>\/\\\.\#!%~\|,&]/]
 ]
 
 # `line' and `col' point to where we are in the source code.
