@@ -19,7 +19,8 @@
         $('#outp').text($('#outp').text() + '\n' + ((function() {
           try {
             if (/^\.t\b/.test(uCode)) {
-              tokenStream = tokenize(uCode.slice(3));
+              uCode = uCode.slice(3);
+              tokenStream = tokenize(uCode);
               return "Tokens for " + (JSON.stringify(uCode)) + ":\n  " + (((function() {
                 var _results;
 
@@ -30,9 +31,11 @@
                 return _results;
               })()).join('\n  '));
             } else if (/^\.a\b/.test(uCode)) {
-              return "AST for " + (JSON.stringify(uCode)) + ":\n" + (renderAST(parse(uCode.slice(3))));
+              uCode = uCode.slice(3);
+              return "AST for " + (JSON.stringify(uCode)) + ":\n" + (renderAST(parse(uCode)));
             } else if (/^\.c\b/.test(uCode)) {
-              return compile(uCode.slice(3));
+              uCode = uCode.slice(3);
+              return "Compiled JavaScript for " + (JSON.stringify(uCode)) + ":\n" + (compile(uCode));
             } else {
               return exec(uCode);
             }

@@ -12,7 +12,8 @@ jQuery ($) ->
         $('#outp').text $('#outp').text() + '\n' + (
           try
             if /^\.t\b/.test uCode
-              tokenStream = tokenize uCode[3...]
+              uCode = uCode[3...]
+              tokenStream = tokenize uCode
               "Tokens for #{JSON.stringify uCode}:\n  #{
                 (
                   while (t = tokenStream.next()).type isnt 'eof'
@@ -20,11 +21,15 @@ jQuery ($) ->
                 ).join '\n  '
               }"
             else if /^\.a\b/.test uCode
+              uCode = uCode[3...]
               "AST for #{JSON.stringify uCode}:\n#{
-                renderAST parse uCode[3...]
+                renderAST parse uCode
               }"
             else if /^\.c\b/.test uCode
-              compile uCode[3...]
+              uCode = uCode[3...]
+              "Compiled JavaScript for #{JSON.stringify uCode}:\n#{
+                compile uCode
+              }"
             else
               exec uCode
           catch e
