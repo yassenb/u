@@ -1,5 +1,3 @@
-#!/usr/bin/env coffee
-
 # The lexer transforms source code into a stream of tokens.
 #
 # It does so by trying to match regular expressions at the current source
@@ -73,6 +71,6 @@ tokenDefs = [
       col = (if a.length is 1 then col else 1) + a[a.length - 1].length
       code = code.substring m[0].length
       if type isnt '-' then return {
-        type, startLine, startCol,
-        value: m[0], endLine: line, endCol: col
+        type, value: m[0],
+        startLine, startCol, endLine: line, endCol: col
       }
