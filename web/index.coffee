@@ -6,7 +6,7 @@ jQuery ($) ->
   $('#inp')
     .focus()
     .keypress (event) ->
-      if event.keyCode is 13
+      if String.fromCharCode(event.which) is "\r"
         uCode = $('#inp').val()
         if not uCode then return false
         $('#outp').text $('#outp').text() + '\n' + (
