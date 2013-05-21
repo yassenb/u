@@ -12,7 +12,7 @@ glob = require 'glob'
 stitch = require 'stitch'
 
 coffeeToJsFileName = (f) ->
-  f.replace /^src\/(.+)\.coffee$/, 'lib/$1.js'
+  f.replace /^src\/(.+)\.coffee$/, 'dist/$1.js'
 
 task 'build', ->
   ake [
@@ -22,7 +22,7 @@ task 'build', ->
       glob.sync('src/**/*.coffee').map coffeeToJsFileName
       ['web/u-stitched.js']
       ({callback, log}) ->
-        stitch.createPackage(paths: ['lib']).compile (err, jsCode) ->
+        stitch.createPackage(paths: ['dist']).compile (err, jsCode) ->
           if err then throw err
           log 'writing stitched file'
           fs.writeFile 'web/u-stitched.js', jsCode, (err) ->
