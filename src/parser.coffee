@@ -34,12 +34,11 @@ lexer = require './lexer'
   token = tokenStream.next()
 
   # `consume(tt)` consumes the upcoming token and returns a truthy value only
-  # if its type matches `tt`.  A space-separated value of `tt` matches any of
-  # a set of token types.
-  consume = (tt) ->
-    if token.type in tt.split ' ' then token = tokenStream.next()
+  # if its type matches any in `tt`
+  consume = (tts) ->
+    if token.type in tts then token = tokenStream.next()
 
-  # `demand(tt)` is like `consume(tt)` but intolerant to a mismatch.
+  # `demand(tt)` is like `consume([tt])` but intolerant to a mismatch.
   demand = (tt) ->
     if token.type isnt tt
       parserError "Expected token of type '#{tt}' but got '#{token.type}'"
@@ -68,23 +67,23 @@ lexer = require './lexer'
 
   parseValue = ->
     t = token
-    if consume 'number string name _' then [t.type, t.value]
-    else if consume '(' then (r = parseExpr(); demand ')'; r)
-    else if consume '['
+    if consume ['number', 'string', 'name', '_'] then [t.type, t.value]
+    else if consume ['('] then (r = parseExpr(); demand ')'; r)
+    else if consume ['[']
       r = ['sequence']
       if token.type isnt ']'
         r.push parseValue()
-        while consume ';'
+        while consume [';']
           r.push parseValue()
       demand ']'
       r
-    else if consume '{'
+    else if consume ['{']
       r = ['parametric', parseExpr(), parseLocal()]
       demand '}'
       r
-    else if consume '?{'
+    else if consume ['?{']
       throw Error 'Not implemented'
-    else if consume '@{'
+    else if consume ['@{']
       throw Error 'Not implemented'
     else
       parserError "Expected value but found #{t.type}"
