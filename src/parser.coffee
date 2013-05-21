@@ -1,5 +1,3 @@
-#!/usr/bin/env coffee
-
 lexer = require './lexer'
 
 # The parser builds an AST from a stream of tokens.
@@ -56,7 +54,7 @@ lexer = require './lexer'
   # roughly correspond to the set of non-terminals.
 
   parseProgram = ->
-    parseExpr() # todo
+    parseExpr() # TODO
 
   parseExpr = ->
     r = ['expression', parseValue()].concat(
@@ -68,7 +66,10 @@ lexer = require './lexer'
   parseValue = ->
     t = token
     if consume ['number', 'string', 'name', '_'] then [t.type, t.value]
-    else if consume ['('] then (r = parseExpr(); demand ')'; r)
+    else if consume ['(']
+      r = parseExpr()
+      demand ')'
+      r
     else if consume ['[']
       r = ['sequence']
       if token.type isnt ']'
