@@ -7,17 +7,19 @@ if not fs.existsSync 'node_modules'
   '''
   process.exit 1
 
-{coffee, cat, jade, sass, action} = ake = require 'ake'
+{coffee, action} = ake = require 'ake'
 glob = require 'glob'
 stitch = require 'stitch'
 
+coffeeToJsFileName = (f) ->
+  f.replace /^src\/(.+)\.coffee$/, 'lib/$1.js'
+
 task 'build', ->
   ake [
-    coffee 'src/**/*.coffee', (f) -> f.replace /^src\/(.+)\.coffee$/, 'lib/$1.js'
+    coffee 'src/**/*.coffee', coffeeToJsFileName
     coffee 'web/index.coffee'
     action(
-      glob.sync('src/**/*.coffee').map (f) ->
-        f.replace /^src\/(.+)\.coffee$/, 'lib/$1.js'
+      glob.sync('src/**/*.coffee').map coffeeToJsFileName
       ['web/u-stitched.js']
       ({callback, log}) ->
         stitch.createPackage(paths: ['lib']).compile (err, jsCode) ->
