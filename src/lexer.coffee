@@ -76,9 +76,3 @@ tokenDefs = [
         type, startLine, startCol,
         value: m[0], endLine: line, endCol: col
       }
-
-
-if module is require.main then do =>
-  tokenStream = @tokenize '$pinf >: > : >>>'
-  while (token = tokenStream.next()).type isnt 'eof'
-    console.info token
