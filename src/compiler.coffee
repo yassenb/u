@@ -20,5 +20,7 @@ renderJS = (node) ->
         r = "(#{renderJS node[i]})([#{r}].concat(#{renderJS node[i + 1]}))"
         i += 2
       r
+    when 'sequence'
+      '[' + (for child in node[1...] then renderJS child).join(',') + ']'
     else
       throw Error 'Compiler error: Unrecognised node type, ' + node[0]
