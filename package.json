@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "devDependencies": {
     "coffee-script": "",
+    "glob": "",
     "stitch": "git+https://github.com/ngn/stitch"
   }
 }
