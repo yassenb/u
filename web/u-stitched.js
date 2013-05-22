@@ -49,12 +49,16 @@
   }
   return this.require.define;
 }).call(this)({"compiler": function(exports, require, module) {(function() {
-  var compile, parse, renderJS;
+  var compile, parse, renderJS, stdlib;
 
   parse = require('./parser').parse;
 
+  stdlib = require('./stdlib');
+
   this.exec = function(uCode) {
-    return (new Function("return " + (compile(uCode)) + ";"))();
+    console.info('uCode', uCode);
+    console.info('stdlib', stdlib);
+    return (new Function("console.info('a0', arguments[0]);\nvar ctx = arguments[0];\nreturn " + (compile(uCode)) + ";"))(stdlib);
   };
 
   this.compile = compile = function(uCode) {
@@ -62,15 +66,19 @@
   };
 
   renderJS = function(node) {
-    var alternative, child, condition, consequence, i, local, r, tokenType, _i, _len, _ref, _ref1, _ref2;
+    var alternative, child, condition, consequence, i, local, name, r, tokenType, _i, _len, _ref, _ref1, _ref2;
 
     switch (node[0]) {
       case 'number':
         return node[1];
       case 'name':
-        return node[1].replace(/[^a-z0-9\$]/i, function(x) {
-          return '_' + ('000' + x.charCodeAt(0).toString(16)).slice(-4);
-        });
+        name = node[1];
+        if (/^[a-z_\$][a-z0-9_\$]*$/i.test(name)) {
+          return "ctx." + name;
+        } else {
+          return "ctx[" + (JSON.stringify(name)) + "]";
+        }
+        break;
       case 'expression':
         r = renderJS(node[1]);
         i = 2;
@@ -289,6 +297,12 @@
     result = parseProgram();
     demand('eof');
     return result;
+  };
+
+}).call(this);
+}, "stdlib": function(exports, require, module) {(function() {
+  this['+'] = function(a) {
+    return a[0] + a[1];
   };
 
 }).call(this);

@@ -1,7 +1,14 @@
 {parse} = require './parser'
+stdlib = require './stdlib'
 
 @exec = (uCode) ->
-  (new Function "return #{compile uCode};")()
+  console.info 'uCode', uCode
+  console.info 'stdlib', stdlib
+  (new Function """
+    console.info('a0', arguments[0]);
+    var ctx = arguments[0];
+    return #{compile uCode};
+  """) stdlib
 
 @compile = compile = (uCode) ->
   renderJS parse uCode
@@ -11,8 +18,11 @@ renderJS = (node) ->
     when 'number'
       node[1]
     when 'name'
-      node[1].replace /[^a-z0-9\$]/i, (x) ->
-        '_' + ('000' + x.charCodeAt(0).toString(16))[-4...] # render as four hex digits
+      name = node[1]
+      if /^[a-z_\$][a-z0-9_\$]*$/i.test name
+        "ctx.#{name}"
+      else
+        "ctx[#{JSON.stringify name}]"
     when 'expression'
       r = renderJS node[1]
       i = 2
