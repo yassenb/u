@@ -1,13 +1,8 @@
 {
   "name": "u",
   "version": "0.0.1",
-  "directories": {
-    "lib": "./lib"
-  },
   "devDependencies": {
     "coffee-script": "",
-    "ake": "",
-    "glob": "",
     "stitch": "git+https://github.com/ngn/stitch"
   }
 }
