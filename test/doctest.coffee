@@ -1,11 +1,9 @@
-#!/usr/bin/env coffee
-
 trim = (s) -> s.replace /(^ +| +$)/g, ''
 
 forEachDoctest = (handler, continuation) ->
   fs = require 'fs'
   glob = require 'glob'
-  glob __dirname + '/../src/**/*.coffee', (err, files) ->
+  glob __dirname + '/../../src/**/*.coffee', (err, files) ->
     if err then throw err
     for f in files
       lines = fs.readFileSync(f, 'utf8').split '\n'
@@ -20,7 +18,7 @@ forEachDoctest = (handler, continuation) ->
     continuation?()
 
 @runTestCase = runTestCase = ({code, expectation}) ->
-  {exec} = require '../dist/compiler'
+  {exec} = require '../src/compiler'
   if m = expectation.match /^error\b\s*([^]*)$/
     expectedErrorMessage = if m[1] then eval m[1] else ''
     try

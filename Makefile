@@ -2,43 +2,55 @@
 # The binaries you need installed globally are node and npm
 #
 
-distdir := dist
-compileddir := compiled
+dist_dir := dist
+compiled_dir := compiled
 
 coffee := node_modules/.bin/coffee
+mocha := node_modules/.bin/mocha
 
 sources := $(shell find src web -iname '*.coffee')
 web :=  $(shell find web/* -not -iname '*.coffee')
-compiled = $(patsubst %.coffee, %.js, $(shell \
+test_sources := $(shell find test -iname '*.coffee')
+get_compiled = $(patsubst %.coffee, %.js, $(shell \
 	files=; \
-	for f in $(sources); do \
-		files="$$files $(compileddir)/$$f"; \
+	for f in $(1); do \
+		files="$$files $(compiled_dir)/$$f"; \
 	done; \
 	echo $$files \
 ))
+compiled = $(call get_compiled, $(sources))
+test_compiled = $(call get_compiled, $(test_sources))
 
 all: dist
 
-dist: build
+dist: test
 	@echo "(target) generating distribution"
-	@mkdir -p $(distdir)/web
+	@mkdir -p $(dist_dir)/web
 	@node stitch.js
 	@for f in $(web); do \
-		cp -f $$f $(distdir)/$$f; \
+		cp -f $$f $(dist_dir)/$$f; \
 	done
 
 build: $(compiled)
 
-$(compileddir)/src/%.js: src/%.coffee node_modules
+$(compiled_dir)/src/%.js: src/%.coffee node_modules
 	@echo "(compile) source: $<"
-	@$(coffee) -o $(compileddir)/$(dir $<) -c $<
+	@$(coffee) -o $(compiled_dir)/$(dir $<) -c $<
 
-$(compileddir)/web/%.js: web/%.coffee node_modules
+$(compiled_dir)/web/%.js: web/%.coffee node_modules
 	@echo "(compile) web: $<"
-	@$(coffee) -o $(compileddir)/$(dir $<) -c $<
+	@$(coffee) -o $(compiled_dir)/$(dir $<) -c $<
 
-test: build
-	@$(coffee) test/doctest.coffee
+$(compiled_dir)/test/%.js: test/%.coffee node_modules
+	@echo "(compile) test: $<"
+	@$(coffee) -o $(compiled_dir)/$(dir $<) -c $<
+	@cp test/mocha.opts $(compiled_dir)/test
+
+test: build $(test_compiled)
+	@echo "(target) running tests..."
+	@cd $(compiled_dir); ../$(mocha)
+	@echo "(target) running doc tests..."
+	@node $(compiled_dir)/test/doctest
 
 node_modules: package.json
 	@echo "(target) updating node modules..."
@@ -46,7 +58,8 @@ node_modules: package.json
 
 clean:
 	@echo "(target) cleaning..."
-	@rm -rf $(distdir)
+	@rm -rf $(compiled_dir)
+	@rm -rf $(dist_dir)
 
 node_clean:
 	@echo "(target) distcleaning..."

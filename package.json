@@ -4,6 +4,11 @@
   "devDependencies": {
     "coffee-script": "",
     "glob": "",
-    "stitch": "git+https://github.com/ngn/stitch"
+    "stitch": "git+https://github.com/ngn/stitch",
+
+    "mocha": "",
+    "should": "",
+    "sinon": "",
+    "mockit": ""
   }
 }
