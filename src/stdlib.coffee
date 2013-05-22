@@ -13,10 +13,10 @@
 # +.[1]          ->   1
 # +.[1;2;3;4]    ->   10
 # +.[+]          ->   error 'Unsupported'
+# [1;2+3;4]      ->   [1;5;4]
 @['+'] = (a) ->
   if not (a instanceof Array) then a = [a]
   if a.length is 0 then return 0
-  if a.length is 1 then return a[0]
   if typeof a[0] is 'number'
     r = 0
     for x in a
