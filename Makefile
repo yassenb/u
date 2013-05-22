@@ -2,18 +2,20 @@
 # The binaries you need installed globally are node and npm
 #
 
+distdir := dist
+compileddir := compiled
+
+coffee := node_modules/.bin/coffee
+
 sources := $(shell find src web -iname '*.coffee')
 web :=  $(shell find web/* -not -iname '*.coffee')
 compiled = $(patsubst %.coffee, %.js, $(shell \
 	files=; \
 	for f in $(sources); do \
-		files="$$files $(distdir)/`echo $$f | sed -e 's%^src/%%'`"; \
+		files="$$files $(compileddir)/$$f"; \
 	done; \
 	echo $$files \
 ))
-distdir := dist
-
-coffee := node_modules/.bin/coffee
 
 all: dist
 
@@ -27,13 +29,13 @@ dist: build
 
 build: $(compiled)
 
-$(distdir)/web/%.js: web/%.coffee node_modules
+$(compileddir)/src/%.js: src/%.coffee node_modules
 	@echo "(compile) source: $<"
-	@$(coffee) -o $(distdir)/$(dir $<) -c $<
+	@$(coffee) -o $(compileddir)/$(dir $<) -c $<
 
-$(distdir)/%.js: src/%.coffee node_modules
-	@echo "(compile) source: $<"
-	@$(coffee) -o $(distdir)/`echo $(dir $<) | sed -e 's%^src/%%'` -c $<
+$(compileddir)/web/%.js: web/%.coffee node_modules
+	@echo "(compile) web: $<"
+	@$(coffee) -o $(compileddir)/$(dir $<) -c $<
 
 test: build
 	@$(coffee) test/doctest.coffee
@@ -50,4 +52,4 @@ node_clean:
 	@echo "(target) distcleaning..."
 	@rm -rf node_modules
 
-.PHONY: clean test
+.PHONY: clean test build dist all
