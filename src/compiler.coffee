@@ -22,5 +22,16 @@ renderJS = (node) ->
       r
     when 'sequence'
       '[' + (for child in node[1...] then renderJS child).join(',') + ']'
+    when 'conditional'
+      r = ''
+      for [tokenType, condition, consequence] in node[1...-2]
+        if tokenType isnt '::'
+          throw Error 'Compiler error: expected "::" token as a child of "conditional", but found ' + JSON.stringify tokenType
+        r += "(#{renderJS condition})?(#{renderJS consequence}):"
+      [alternative, local] = node[-2...]
+      r += if alternative then renderJS alternative else '$'
+      if local
+        throw Error 'Not implemented: local clause within conditional'
+      r
     else
       throw Error 'Compiler error: Unrecognised node type, ' + node[0]

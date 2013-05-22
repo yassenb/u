@@ -83,11 +83,27 @@ lexer = require './lexer'
       demand '}'
       r
     else if consume ['?{']
-      throw Error 'Not implemented'
+      ifThenClauses = []
+      elseClause = null
+      loop
+        e = parseExpr()
+        if consume ['::']
+          ifThenClauses.push ['::', e, parseExpr()]
+        else
+          elseClause = e
+          break
+        if not consume [';']
+          break
+      local = if token.type is '++' then parseLocal() else null
+      demand '}'
+      ['conditional'].concat ifThenClauses, [elseClause], [local]
     else if consume ['@{']
       throw Error 'Not implemented'
     else
       parserError "Expected value but found #{t.type}"
+
+  parseLocal = ->
+    throw Error 'Not implemented: parseLocal()'
 
   result = parseProgram()
   demand 'eof'

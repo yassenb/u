@@ -40,7 +40,9 @@ jQuery ($) ->
       true
 
 renderAST = (node, indent = '  ') ->
-  if node.length is 2 and typeof node[1] is 'string'
+  if node is null
+    indent + 'null'
+  else if node.length is 2 and typeof node[1] is 'string'
     indent + node[0] + ' ' + JSON.stringify node[1]
   else
     indent + node[0] + '\n' + (

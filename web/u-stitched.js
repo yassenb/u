@@ -62,7 +62,7 @@
   };
 
   renderJS = function(node) {
-    var child, i, r;
+    var alternative, child, condition, consequence, i, local, r, tokenType, _i, _len, _ref, _ref1, _ref2;
 
     switch (node[0]) {
       case 'number':
@@ -91,6 +91,22 @@
           }
           return _results;
         })()).join(',') + ']';
+      case 'conditional':
+        r = '';
+        _ref = node.slice(1, -2);
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          _ref1 = _ref[_i], tokenType = _ref1[0], condition = _ref1[1], consequence = _ref1[2];
+          if (tokenType !== '::') {
+            throw Error('Compiler error: expected "::" token as a child of "conditional", but found ' + JSON.stringify(tokenType));
+          }
+          r += "(" + (renderJS(condition)) + ")?(" + (renderJS(consequence)) + "):";
+        }
+        _ref2 = node.slice(-2), alternative = _ref2[0], local = _ref2[1];
+        r += alternative ? renderJS(alternative) : '$';
+        if (local) {
+          throw Error('Not implemented: local clause within conditional');
+        }
+        return r;
       default:
         throw Error('Compiler error: Unrecognised node type, ' + node[0]);
     }
@@ -170,7 +186,7 @@
   lexer = require('./lexer');
 
   this.parse = function(code, opts) {
-    var consume, demand, parseExpr, parseProgram, parseValue, parserError, result, token, tokenStream;
+    var consume, demand, parseExpr, parseLocal, parseProgram, parseValue, parserError, result, token, tokenStream;
 
     if (opts == null) {
       opts = {};
@@ -220,7 +236,7 @@
       }
     };
     parseValue = function() {
-      var r, t;
+      var e, elseClause, ifThenClauses, local, r, t;
 
       t = token;
       if (consume(['number', 'string', 'name', '_'])) {
@@ -244,12 +260,31 @@
         demand('}');
         return r;
       } else if (consume(['?{'])) {
-        throw Error('Not implemented');
+        ifThenClauses = [];
+        elseClause = null;
+        while (true) {
+          e = parseExpr();
+          if (consume(['::'])) {
+            ifThenClauses.push(['::', e, parseExpr()]);
+          } else {
+            elseClause = e;
+            break;
+          }
+          if (!consume([';'])) {
+            break;
+          }
+        }
+        local = token.type === '++' ? parseLocal() : null;
+        demand('}');
+        return ['conditional'].concat(ifThenClauses, [elseClause], [local]);
       } else if (consume(['@{'])) {
         throw Error('Not implemented');
       } else {
         return parserError("Expected value but found " + t.type);
       }
+    };
+    parseLocal = function() {
+      throw Error('Not implemented: parseLocal()');
     };
     result = parseProgram();
     demand('eof');

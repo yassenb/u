@@ -11,7 +11,7 @@
     return $('#inp').focus().keypress(function(event) {
       var e, t, tokenStream, uCode;
 
-      if (event.keyCode === 13) {
+      if (String.fromCharCode(event.which) === "\r") {
         uCode = $('#inp').val();
         if (!uCode) {
           return false;
@@ -57,7 +57,9 @@
     if (indent == null) {
       indent = '  ';
     }
-    if (node.length === 2 && typeof node[1] === 'string') {
+    if (node === null) {
+      return indent + 'null';
+    } else if (node.length === 2 && typeof node[1] === 'string') {
       return indent + node[0] + ' ' + JSON.stringify(node[1]);
     } else {
       return indent + node[0] + '\n' + ((function() {
