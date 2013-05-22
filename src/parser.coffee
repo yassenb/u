@@ -73,9 +73,9 @@ lexer = require './lexer'
     else if consume ['[']
       r = ['sequence']
       if token.type isnt ']'
-        r.push parseValue()
+        r.push parseExpr()
         while consume [';']
-          r.push parseValue()
+          r.push parseExpr()
       demand ']'
       r
     else if consume ['{']

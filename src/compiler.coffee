@@ -2,10 +2,7 @@
 stdlib = require './stdlib'
 
 @exec = (uCode) ->
-  console.info 'uCode', uCode
-  console.info 'stdlib', stdlib
   (new Function """
-    console.info('a0', arguments[0]);
     var ctx = arguments[0];
     return #{compile uCode};
   """) stdlib
@@ -27,7 +24,7 @@ renderJS = (node) ->
       r = renderJS node[1]
       i = 2
       while i < node.length
-        r = "(#{renderJS node[i]})([#{r}].concat(#{renderJS node[i + 1]}))"
+        r = "(#{renderJS node[i]})([#{r},#{renderJS node[i + 1]}])"
         i += 2
       r
     when 'sequence'

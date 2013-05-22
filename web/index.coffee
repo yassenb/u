@@ -31,7 +31,7 @@ jQuery ($) ->
                 compile uCode
               }"
             else
-              exec uCode
+              JSON.stringify exec uCode
           catch e
             e.stack
         )
