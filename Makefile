@@ -36,6 +36,7 @@ $(distdir)/%.js: src/%.coffee node_modules
 	@$(coffee) -o $(distdir)/`echo $(dir $<) | sed -e 's%^src/%%'` -c $<
 
 test: build
+	@$(coffee) test/doctest.coffee
 
 node_modules: package.json
 	@echo "(target) updating node modules..."
