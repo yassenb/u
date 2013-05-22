@@ -2,10 +2,7 @@
 stdlib = require './stdlib'
 
 @exec = (uCode) ->
-  console.info 'uCode', uCode
-  console.info 'stdlib', stdlib
   (new Function """
-    console.info('a0', arguments[0]);
     var ctx = arguments[0];
     return #{compile uCode};
   """) stdlib
