@@ -12,14 +12,18 @@ stdlib = require './stdlib'
 
 renderJS = (node) ->
   switch node[0]
+    when 'program'
+      '(' + (for child in node[1...] then '(' + renderJS(child) + ')').join(',') + ')'
+    when '=='
+      if node[1][0] isnt 'name'
+        # [x;y]==[0;1]   ->   error 'Destructuring'
+        throw Error 'Compiler error: Destructuring assignment is not implemented.'
+      # a==1; a   ->   1
+      nameToJS(node[1][1]) + '=' + renderJS node[2]
     when 'number'
       node[1]
     when 'name'
-      name = node[1]
-      if /^[a-z_\$][a-z0-9_\$]*$/i.test name
-        "ctx.#{name}"
-      else
-        "ctx[#{JSON.stringify name}]"
+      nameToJS node[1]
     when 'expression'
       r = renderJS node[1]
       i = 2
@@ -42,3 +46,9 @@ renderJS = (node) ->
       r
     else
       throw Error 'Compiler error: Unrecognised node type, ' + node[0]
+
+nameToJS = (name) ->
+  if /^[a-z_\$][a-z0-9_\$]*$/i.test name
+    "ctx.#{name}"
+  else
+    "ctx[#{JSON.stringify name}]"

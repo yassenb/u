@@ -53,8 +53,32 @@ lexer = require './lexer'
   # The parser is a recursive descent parser.  Various `parseXXX()` functions
   # roughly correspond to the set of non-terminals.
 
+  # 1;2;3 -> 3
   parseProgram = ->
-    parseExpr() # TODO
+    r = ['program', parseDefOrExpr()].concat(
+      while consume [';'] then parseDefOrExpr()
+    )
+    if r.length is 2 then r[1] else r
+
+  parseDefOrExpr = ->
+    if consume ['{']
+      r = ['def']
+      loop
+        pattern = parseExpr()
+        demand '=='
+        r.push ['==', pattern, parseExpr()]
+        if not consume [';'] then break
+      demand '}'
+      r
+    else
+      e = parseExpr()
+      if consume ['=='] then ['==', e, parseExpr()] else e
+
+  parseDef = ->
+    r = parseDefOrExpr()
+    if r[0] not in ['def', '==']
+      parserError 'Expected def but found expression'
+    r
 
   parseExpr = ->
     r = ['expression', parseValue()].concat(
