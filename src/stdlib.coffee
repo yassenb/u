@@ -31,3 +31,5 @@
     [].concat a...
   else
     throw Error 'Unsupported argument type for +'
+
+@$ = null

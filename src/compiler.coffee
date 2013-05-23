@@ -37,13 +37,14 @@ renderJS = (node) ->
     when 'conditional'
       # ?{1::2;3}   ->   2
       # ?{0::2;3}   ->   3
+      # ?{0::2}     ->   $
       r = ''
       for [tokenType, condition, consequence] in node[1...-2]
         if tokenType isnt '::'
           throw Error 'Compiler error: expected "::" token as a child of "conditional", but found ' + JSON.stringify tokenType
         r += "(#{renderJS condition})?(#{renderJS consequence}):"
       [alternative, local] = node[-2...]
-      r += if alternative then renderJS alternative else '$'
+      r += if alternative then renderJS alternative else nameToJS '$'
       if local
         throw Error 'Not implemented: local clause within conditional'
       r
