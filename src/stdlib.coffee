@@ -33,3 +33,10 @@
     throw Error 'Unsupported argument type for +'
 
 @$ = null
+@$f = false
+@$t = true
+@$pinf = Infinity
+@$ninf = -Infinity
+@$e = Math.E
+@$pi = Math.PI
+#@$np = # TODO
