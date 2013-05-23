@@ -51,13 +51,17 @@ renderJS = (node) ->
         throw Error 'Not implemented: local clause within conditional'
       r
     when 'function'
-      # (@{a (1) :: a+2}).3   ->   5
+      # (@{a (1) :: a+2}).3         ->   5
+      # (@{a :: a+2}).3             ->   5
+      # (@{(1) :: 123}).3           ->   123
+      # (@{1 :: 123}).3             ->   error ''
+      # (@{:: 123}).3               ->   123
+      # @{a}                        ->   error ''
       # (@{a (0) :: a+2; :: 6}).3   ->   6
       r = 'helpers.createLambda(ctx, function (arg, ctx) {\n'
       for [_0, pattern, guard, result] in node[1...-1]
         if pattern
           if pattern[0] isnt 'name'
-            console.info pattern
             throw Error 'Only the simplest form of patterns are supported---names'
           r += nameToJS(pattern[0][1]) + ' = arg;\n'
         if guard
