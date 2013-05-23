@@ -121,12 +121,28 @@ lexer = require './lexer'
       demand '}'
       ['conditional'].concat ifThenClauses, [elseClause], [local]
     else if consume ['@{']
-      throw Error 'Not implemented'
+      clauses = []
+      loop
+        if token.type isnt '::'
+          initialTokenType = token.type # used to disambiguate between pattern and guard
+          e = parseValue()
+          [pattern, guard] =
+            if token.type is '(' then [e, parseExpr()]
+            else if initialTokenType is '(' then [null, e]
+            else [e, null]
+        demand '::'
+        result = if token.type in [';', '++', '}'] then null else parseExpr()
+        clauses.push ['clause', pattern, guard, result]
+        if not consume [';'] then break
+      local = if token.type is '++' then parseLocal() else null
+      demand '}'
+      ['function'].concat clauses, [local]
     else
       parserError "Expected value but found #{t.type}"
 
   parseLocal = ->
-    throw Error 'Not implemented: parseLocal()'
+    demand '++'
+    ['local', parseDef()].concat(while consume ';' then parseDef())
 
   result = parseProgram()
   demand 'eof'
