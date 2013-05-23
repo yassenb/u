@@ -1,3 +1,5 @@
+_ = require '../lib/underscore'
+
 {parse} = require './parser'
 stdlib = require './stdlib'
 helpers = require './helpers'
@@ -16,7 +18,9 @@ renderJS = (node) ->
   switch node[0]
     when 'program'
       # 1;2;3   ->   3
-      '(' + (for child in node[1...] then '(' + renderJS(child) + ')').join(',') + ')'
+      statements = _(node[1...]).map (child) ->
+        "(#{renderJS(child)})"
+      "(#{statements.join(',')})"
     when '=='
       if node[1][0] isnt 'name'
         # [x;y]==[0;1]   ->   error 'Destructuring'

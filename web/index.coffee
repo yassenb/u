@@ -1,6 +1,6 @@
-{parse} = require 'parser'
-{tokenize} = require 'lexer'
-{compile, exec} = require 'compiler'
+{parse} = require 'src/parser'
+{tokenize} = require 'src/lexer'
+{compile, exec} = require 'src/compiler'
 
 jQuery ($) ->
   $('#inp')
