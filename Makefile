@@ -30,6 +30,10 @@ dist: test
 	@for f in $(web); do \
 		cp -f $$f $(dist_dir)/$$f; \
 	done
+	@for f in `find $(compiled_dir)/web -iname '*.js'`; do \
+		dest_file=$(dist_dir)/`echo $$f | sed -e 's%^compiled/%%'`; \
+		cp -f $$f $$dest_file; \
+	done
 
 build: $(compiled)
 
