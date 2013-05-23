@@ -52,6 +52,7 @@ renderJS = (node) ->
       r
     when 'function'
       # (@{a (1) :: a+2}).3   ->   5
+      # (@{a (0) :: a+2; :: 6}).3   ->   6
       r = 'helpers.createLambda(ctx, function (arg, ctx) {\n'
       for [_0, pattern, guard, result] in node[1...-1]
         if pattern

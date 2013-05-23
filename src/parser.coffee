@@ -123,6 +123,7 @@ lexer = require './lexer'
     else if consume ['@{']
       clauses = []
       loop
+        pattern = guard = null
         if token.type isnt '::'
           initialTokenType = token.type # used to disambiguate between pattern and guard
           e = parseValue()
