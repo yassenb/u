@@ -1,11 +1,13 @@
 {parse} = require './parser'
 stdlib = require './stdlib'
+helpers = require './helpers'
 
 @exec = (uCode) ->
   (new Function """
-    var ctx = arguments[0];
+    var ctx     = arguments[0],
+        helpers = arguments[1];
     return #{compile uCode};
-  """) stdlib
+  """) stdlib, helpers
 
 @compile = compile = (uCode) ->
   renderJS parse uCode
