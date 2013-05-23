@@ -50,6 +50,23 @@ renderJS = (node) ->
       if local
         throw Error 'Not implemented: local clause within conditional'
       r
+    when 'function'
+      # (@{a (1) :: a+2}).3   ->   5
+      r = 'helpers.createLambda(ctx, function (arg, ctx) {\n'
+      for [_0, pattern, guard, result] in node[1...-1]
+        if pattern
+          if pattern[0] isnt 'name'
+            console.info pattern
+            throw Error 'Only the simplest form of patterns are supported---names'
+          r += nameToJS(pattern[0][1]) + ' = arg;\n'
+        if guard
+          r += "if (#{renderJS guard}) {\n"
+        r += "return #{if result then renderJS result else nameToJS '$'};"
+        if guard
+          r += '}\n'
+      if local
+        throw Error 'Not implemented: local clause within function'
+      r += "return #{nameToJS '$'};})"
     else
       throw Error 'Compiler error: Unrecognised node type, ' + node[0]
 
