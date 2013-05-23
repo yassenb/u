@@ -13,6 +13,7 @@ stdlib = require './stdlib'
 renderJS = (node) ->
   switch node[0]
     when 'program'
+      # 1;2;3   ->   3
       '(' + (for child in node[1...] then '(' + renderJS(child) + ')').join(',') + ')'
     when '=='
       if node[1][0] isnt 'name'
@@ -34,6 +35,8 @@ renderJS = (node) ->
     when 'sequence'
       '[' + (for child in node[1...] then renderJS child).join(',') + ']'
     when 'conditional'
+      # ?{1::2;3}   ->   2
+      # ?{0::2;3}   ->   3
       r = ''
       for [tokenType, condition, consequence] in node[1...-2]
         if tokenType isnt '::'

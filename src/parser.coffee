@@ -53,7 +53,6 @@ lexer = require './lexer'
   # The parser is a recursive descent parser.  Various `parseXXX()` functions
   # roughly correspond to the set of non-terminals.
 
-  # 1;2;3 -> 3
   parseProgram = ->
     r = ['program', parseDefOrExpr()].concat(
       while consume [';'] then parseDefOrExpr()
