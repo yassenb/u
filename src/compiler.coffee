@@ -88,18 +88,18 @@ renderJS = (node) ->
           # @{(1) :: 123} . 3           ->   123
           # @{a (0) :: a+2; :: 6} . 3   ->   6
           returnStatement = """
-          if (#{renderJS guard}) {
-              #{returnStatement}
-          }
+            if (#{renderJS guard}) {
+                #{returnStatement}
+            }
           """
         body += returnStatement
       if local
         throw Error 'Not implemented: local clause within function'
       r = """
-      helpers.createLambda(ctx, function (arg, ctx) {
-          #{body}
-          return #{nameToJS '$'};
-      })
+        helpers.createLambda(ctx, function (arg, ctx) {
+            #{body}
+            return #{nameToJS '$'};
+        })
       """
     else
       throw Error 'Compiler error: Unrecognised node type, ' + node[0]
