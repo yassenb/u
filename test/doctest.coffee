@@ -79,11 +79,13 @@ runDoctests = (continuation) ->
         lastTestTimestamp = Date.now()
 
     -> # continuation after forEachDoctest
-      console.info(
-        (if nFailed then "#{nFailed} out of #{nTests} tests failed"
-        else "All #{nTests} tests passed") +
-        " in #{Date.now() - t0} ms."
-      )
+      if nFailed
+        console.error "#{nFailed} out of #{nTests} tests failed"
+      else
+        console.info "All #{nTests} tests passed"
+      console.info " in #{Date.now() - t0} ms."
+      process.exit 1 if nFailed
+
       continuation?()
   )
 
