@@ -50,7 +50,7 @@ renderJS = (node) ->
       r
     when 'sequence'
       # + . [1;2]   ->   3
-      "[#{node[1...].map(renderJS).join(',')}]"
+      "[#{_(node[1...]).map(renderJS).join(',')}]"
     when 'conditional'
       # ?{1::2;3}   ->   2
       # ?{0::2;3}   ->   3
@@ -70,29 +70,37 @@ renderJS = (node) ->
 
       r
     when 'function'
-      # (@{a (1) :: a+2}).3         ->   5
-      # (@{a :: a+2}).3             ->   5
-      # (@{(1) :: 123}).3           ->   123
-      # (@{1 :: 123}).3             ->   error ''
-      # (@{:: 123}).3               ->   123
-      # @{a}                        ->   error ''
-      # (@{a (0) :: a+2; :: 6}).3   ->   6
+      # @{:: 123} . 3                   ->   123
+      # @{a :: a+2} . 3                 ->   5
+      # x==5; @{:: x} . $               ->   5
+      # x==5; f==@{:: x}; x==6; f . x   ->   6
+      # TODO test that creating a new function creates a new context
+      # @{1 :: 123} . 3                 ->   error 'Only the simplest form of patterns are supported'
       body = ''
       for [_0, pattern, guard, result] in node[1...-1]
         if pattern
           if pattern[0] isnt 'name'
             throw Error 'Only the simplest form of patterns are supported---names'
-          body += nameToJS(pattern[0][1]) + ' = arg;\n'
+          body += nameToJS(pattern[1]) + ' = arg;\n'
         returnStatement = "return #{if result then renderJS result else nameToJS '$'};"
         if guard
-          returnStatement = "if (#{renderJS guard}) {\n#{returnStatement}\n}"
+          # @{a (1) :: a+2} . 3         ->   5
+          # @{(1) :: 123} . 3           ->   123
+          # @{a (0) :: a+2; :: 6} . 3   ->   6
+          returnStatement = """
+          if (#{renderJS guard}) {
+              #{returnStatement}
+          }
+          """
         body += returnStatement
       if local
         throw Error 'Not implemented: local clause within function'
-      r = "helpers.createLambda(ctx, function (arg, ctx) {\n
-        #{body}\n
-        return #{nameToJS '$'};\n
-      })"
+      r = """
+      helpers.createLambda(ctx, function (arg, ctx) {
+          #{body}
+          return #{nameToJS '$'};
+      })
+      """
     else
       throw Error 'Compiler error: Unrecognised node type, ' + node[0]
 
