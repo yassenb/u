@@ -6,29 +6,26 @@
   a[0] a[1]
 
 # 1 + 1          ->   2
-# 1 + (1         ->   error 'Parser error'
-# 1 + [1;2]      ->   error 'Inconsistent'
 # [1] + [2;3]    ->   [1;2;3]
+# [] + [2;3]     ->   [2;3]
 # [1;2;3] + []   ->   [1;2;3]
-# +.[1]          ->   1
-# +.[1;2;3;4]    ->   10
-# +.[+]          ->   error 'Unsupported'
-# [1;2+3;4]      ->   [1;5;4]
+# +.[]           ->   error '+ takes exactly two arguments'
+# +.[1]          ->   error '+ takes exactly two arguments'
+# +.[1;2;3;4]    ->   error '+ takes exactly two arguments'
+# 1 + [1;2]      ->   error 'Unsupported'
+# +.[+;2]        ->   error 'Unsupported'
 @['+'] = (a) ->
-  if not (a instanceof Array) then a = [a]
-  if a.length is 0 then return 0
+  if a.length isnt 2
+    throw Error '+ takes exactly two arguments'
+
   if typeof a[0] is 'number'
-    r = 0
-    for x in a
-      if typeof x isnt 'number'
-        throw Error 'Inconsistent argument types for +'
-      r += x
-    r
+    if typeof a[1] isnt 'number'
+      throw Error 'Unsupported operation'
+    a[0] + a[1]
   else if a[0] instanceof Array
-    for x in a
-      if not (x instanceof Array)
-        throw Error 'Inconsistent argument types for +'
-    [].concat a...
+    unless a[1] instanceof Array
+      throw Error 'Unsupported operation'
+    a[0].concat a[1]
   else
     throw Error 'Unsupported argument type for +'
 
