@@ -14,12 +14,20 @@ jQuery ($) ->
             if /^\.t\b/.test uCode
               uCode = uCode[3...]
               tokenStream = tokenize uCode
-              "Tokens for #{JSON.stringify uCode}:\n  #{
-                (
-                  while (t = tokenStream.next()).type isnt 'eof'
-                    JSON.stringify t
-                ).join '\n  '
-              }"
+              """
+                Tokens for #{JSON.stringify uCode}:
+                  type      value               startLine:startCol-endLine:endCol
+                  ----      -----               ---------------------------------
+                  #{
+                    (
+                      while (t = tokenStream.next()).type isnt 'eof'
+                        pad(10, t.type) +
+                          pad(20, JSON.stringify t.value) +
+                          t.startLine + ':' + t.startCol + '-' +
+                          t.endLine + ':' + t.endCol
+                    ).join '\n  '
+                  }
+              """
             else if /^\.a\b/.test uCode
               uCode = uCode[3...]
               "AST for #{JSON.stringify uCode}:\n#{
@@ -63,3 +71,7 @@ repr = (x) ->
   else if typeof x is 'function' then '@{...}'
   else if x is null then '$'
   else '' + x # TODO: strings and figures
+
+# Helper functions to format tabular data
+pad = (width, s) -> s + repeat ' ', Math.max 0, width - s.length
+repeat = (s, n) -> Array(n + 1).join s
