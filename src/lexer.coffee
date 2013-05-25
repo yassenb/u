@@ -16,7 +16,10 @@ tokenDefs = [
                   (?: \s* (?: " | "[^\}].* | [^"].* ) [\n\r]+ )*
                   "\}.*
                 ///]
-  ['number',    /^\d+/]          # todo: floating point numbers
+  ['number',    /^\d+/]          # TODO floating point numbers
+  ['string',    /^'\(('[^]|[^'\)])*\)/]
+  ['string',    /^'[^\(]/]
+  ['string',    /^"[a-z][a-z0-9]*/i]
   ['',          ///^(?:
                       ==
                     | \?\{

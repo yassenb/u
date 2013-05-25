@@ -69,6 +69,9 @@ repr = (x) ->
     else '' + x
   else if typeof x is 'boolean' then '$' + 'ft'[+x]
   else if typeof x is 'function' then '@{...}'
+  else if typeof x is 'string'
+    h = '\n': "'n", '\t': "'t", ')': "')", "'": "''"
+    "'(#{x.replace /[\n\t\)']/g, (x) -> h[x]})"
   else if x is null then '$'
   else '' + x # TODO: strings and figures
 

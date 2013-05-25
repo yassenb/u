@@ -33,6 +33,19 @@ renderJS = (node) ->
     when 'number'
       # 5   ->   5
       node[1]
+    when 'string'
+      s = node[1]
+      JSON.stringify(
+        if /^'\(/.test s
+          # '(')rock''n'roll)   ->   '(')rock''n'roll)
+          # '(()                ->   '(()
+          h = n: '\n', t: '\t', ')': ')', "'": "'", '\n': ''
+          s[2...-1].replace /'['tn\n]/g, (x) -> h[x[1]]
+        else
+          # 'a                  ->   '(a)
+          # "Toledo             ->   '(Toledo)
+          s[1...]
+      )
     when 'name'
       # a   ->   a
       nameToJS node[1]

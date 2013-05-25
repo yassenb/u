@@ -14,6 +14,8 @@
 # +.[1;2;3;4]    ->   error '+ takes exactly two arguments'
 # 1 + [1;2]      ->   error 'Unsupported'
 # +.[+;2]        ->   error 'Unsupported'
+# '(hell)+'o     ->   "hello
+# "hello+'()     ->   "hello
 @['+'] = (a) ->
   if a.length isnt 2
     throw Error '+ takes exactly two arguments'
@@ -26,6 +28,12 @@
     unless a[1] instanceof Array
       throw Error 'Unsupported operation'
     a[0].concat a[1]
+  else if typeof a[0] is 'string'
+    # TODO Are sequences and strings fundamentally distinct or can they be
+    # concatenated to one another?
+    if typeof a[1] isnt 'string'
+      throw Error 'Unsupported operation'
+    a[0] + a[1]
   else
     throw Error 'Unsupported argument type for +'
 
