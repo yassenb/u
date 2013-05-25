@@ -56,6 +56,8 @@ renderJS = (node) ->
       # ?{0::2;3}   ->   3
       # ?{0::2}     ->   $
       # TODO negative test cases
+      # ?{$f::2;$t::3;4}   ->   3
+      # ?{x::2;y::3;4 ++ x==$f; y==$t}   ->   3
       r = ''
       for [tokenType, condition, consequence] in node[1...-2]
         if tokenType isnt '::'
@@ -64,11 +66,15 @@ renderJS = (node) ->
         r += "(#{renderJS condition})?(#{renderJS consequence}):"
       [alternative, local] = node[-2...]
       r += if alternative then renderJS alternative else nameToJS '$'
-
       if local
-        throw Error 'Not implemented: local clause within conditional'
-
-      r
+        """
+          helpers.createLambda(ctx, function (_ignored, ctx) {
+            #{renderJS local}
+            return #{r};
+          })()
+        """
+      else
+        r
     when 'function'
       # @{:: 123} . 3                   ->   123
       # @{a :: a+2} . 3                 ->   5
@@ -101,6 +107,18 @@ renderJS = (node) ->
             return #{nameToJS '$'};
         })
       """
+    when 'local'
+      (
+        for child in node[1...]
+          if child[0] isnt '=='
+            throw Error 'Compiler error: Only "==" nodes (assignments) are supported inside a local.'
+          pattern = child[1]
+          if pattern[0] isnt 'name'
+            throw Error 'Only the simplest form of patterns are supported---names'
+          name = pattern[1]
+          expr = child[2]
+          "#{nameToJS name} = #{renderJS expr};\n"
+      ).join ''
     else
       throw Error 'Compiler error: Unrecognised node type, ' + node[0]
 
