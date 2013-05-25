@@ -31,7 +31,7 @@ jQuery ($) ->
                 compile uCode
               }"
             else
-              JSON.stringify exec uCode
+              repr exec uCode
           catch e
             e.stack
         )
@@ -49,3 +49,17 @@ renderAST = (node, indent = '  ') ->
       for child in node[1...]
         renderAST child, indent + '  '
     ).join '\n'
+
+# repr(x) gives a string representation of U's data structures.
+# Function objects are rendered as "@{...}"
+# Some distinguished constants are rendered as their names.
+repr = (x) ->
+  if x instanceof Array then "[#{(for y in x then repr y).join ';'}]" # TODO: use underscore.js
+  else if typeof x is 'number'
+    if x is Infinity then '$pinf'
+    else if x is -Infinity then '$ninf'
+    else '' + x
+  else if typeof x is 'boolean' then '$' + 'ft'[+x]
+  else if typeof x is 'function' then '@{...}'
+  else if x is null then '$'
+  else '' + x # TODO: strings and figures
