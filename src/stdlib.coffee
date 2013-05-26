@@ -8,17 +8,19 @@
     x y
   else if x instanceof Array or typeof x is 'string'
     if typeof y is 'number'
-      # [1;2;3].$pi   ->   error 'Indices must be integers'
       if y isnt Math.floor y
+        # [1;2;3].$pi   ->   error 'Indices must be integers'
         throw Error 'Indices must be integers'
-      # [1;2;3].3     ->   error 'Index out of bounds'
-      # TODO test negative indices
-      if not (-x.length <= y < x.length)
-        throw Error 'Index out of bounds'
-      # [1;2;3].0     ->   1
-      # [1;2;3].2     ->   3
-      # TODO test negative indices
-      x[if y < 0 then y + x.length else y]
+      else if 0 <= y < x.length
+        # [1;2;3].0     ->   1
+        # [1;2;3].2     ->   3
+        x[y]
+      else if -x.length <= y < 0
+        # TODO test negative indices
+        x[x.length - y]
+      else
+        # [1;2;3].3     ->   $
+        null
     else if typeof y is 'function'
       # [1;2;0;4;5].@{x::?{x::0;1}}   ->   2
       # [1;2;3;4;5].@{x::?{x::0;1}}   ->   $
