@@ -17,12 +17,14 @@
         # [1;2;3].2     ->   3
         # [1;2;3].$f    ->   1
         # [1;2;3].$t    ->   2
+        # "hello.1      ->   'e
         x[y]
       else if -x.length <= y < 0
         # TODO test negative indices
         x[x.length - y]
       else
         # [1;2;3].3     ->   $
+        # "hello.10     ->   $
         null
     else if typeof y is 'function'
       # [1;2;0;4;5].@{x::?{x::0;1}}   ->   2
