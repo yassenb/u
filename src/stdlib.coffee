@@ -7,13 +7,16 @@
     # +.[1;2]  ->  3
     x y
   else if x instanceof Array or typeof x is 'string'
-    if typeof y is 'number'
+    if typeof y in ['number', 'boolean']
+      y = +y # if boolean, convert to number
       if y isnt Math.floor y
         # [1;2;3].$pi   ->   error 'Indices must be integers'
         throw Error 'Indices must be integers'
       else if 0 <= y < x.length
         # [1;2;3].0     ->   1
         # [1;2;3].2     ->   3
+        # [1;2;3].$f    ->   1
+        # [1;2;3].$t    ->   2
         x[y]
       else if -x.length <= y < 0
         # TODO test negative indices
@@ -44,12 +47,15 @@
 # +.[+;2]        ->   error 'Unsupported'
 # '(hell)+'o     ->   "hello
 # "hello+'()     ->   "hello
+# $t + $t        ->   2
+# 2 + $t         ->   3
+# $t + 2         ->   3
 @['+'] = (a) ->
   if a.length isnt 2
     throw Error '+ takes exactly two arguments'
 
-  if typeof a[0] is 'number'
-    if typeof a[1] isnt 'number'
+  if typeof a[0] in ['number', 'boolean']
+    if typeof a[1] not in ['number', 'boolean']
       throw Error 'Unsupported operation'
     a[0] + a[1]
   else if a[0] instanceof Array
