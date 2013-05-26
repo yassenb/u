@@ -53,12 +53,31 @@ renderJS = (node) ->
       # 2 + 3 4               ->   error 'Invalid expression'
       if node.length % 2 != 0
         throw Error 'Invalid expression'
+
       # 2 + 3 + 4             ->   9
       # 2 + 3 @{ x :: 7 } 4   ->   7
-      r = renderJS node[1]
-      i = 2
+      if node[1][0] is '_'
+        # Initial "_" must be treated differently from subsequent "_"-s.
+        # The first three children of our node will be knit together using curryRight().
+        if node.length is 2
+          throw Error 'A single underscore cannot be used as an expression.'
+        if node[3][0] is '_'
+          # _+_   ->   +
+          r = renderJS node[2] # currying on both sides returns the function itself
+        else
+          # (_+1).2   ->   3
+          r = "helpers.curryRight(#{renderJS node[2]},#{renderJS node[3]})"
+        i = 4
+      else
+        r = renderJS node[1]
+        i = 2
+
       while i < node.length
-        r = "(#{renderJS node[i]})([#{r},#{renderJS node[i + 1]}])"
+        if node[i + 1][0] is '_'
+          # (1+_).2   ->   3
+          r = "helpers.curryLeft(#{renderJS node[i]}, #{r})"
+        else
+          r = "(#{renderJS node[i]})([#{r},#{renderJS node[i + 1]}])"
         i += 2
       r
     when 'sequence'
@@ -132,6 +151,9 @@ renderJS = (node) ->
           expr = child[2]
           "#{nameToJS name} = #{renderJS expr};\n"
       ).join ''
+    when '_'
+      # 1 _ 1   ->   error 'currying'
+      throw Error 'Invalid currying'
     else
       throw Error 'Compiler error: Unrecognised node type, ' + node[0]
 
