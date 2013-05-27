@@ -88,7 +88,7 @@ lexer = require './lexer'
 
   parseValue = ->
     t = token
-    if consume ['number', 'string', 'name', '_'] then [t.type, t.value]
+    if consume ['number', 'string', 'name', 'dollarConstant', '_'] then [t.type, t.value]
     else if consume ['(']
       r = parseExpr()
       demand ')'

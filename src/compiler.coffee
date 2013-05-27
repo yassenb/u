@@ -97,7 +97,7 @@ renderJS = (node) ->
             JSON.stringify tokenType
         r += "(#{renderJS condition})?(#{renderJS consequence}):"
       [alternative, local] = node[-2...]
-      r += if alternative then renderJS alternative else nameToJS '$'
+      r += if alternative then renderJS alternative else 'null'
       if local
         """
           helpers.createLambda(ctx, function (_ignored, ctx) {
@@ -121,7 +121,7 @@ renderJS = (node) ->
           if pattern[0] isnt 'name'
             throw Error 'Only the simplest form of patterns are supported---names'
           body += nameToJS(pattern[1]) + ' = arg;\n'
-        returnStatement = "return #{if result then renderJS result else nameToJS '$'};"
+        returnStatement = "return #{if result then renderJS result else 'null'};"
         if guard
           # @{a (1) :: a+2} . 3         ->   5
           # @{(1) :: 123} . 3           ->   123
@@ -137,7 +137,7 @@ renderJS = (node) ->
         helpers.createLambda(ctx, function (arg, ctx) {
             #{if local then renderJS local else ''}
             #{body}
-            return #{nameToJS '$'};
+            return null;
         })
       """
     when 'local'
@@ -155,6 +155,17 @@ renderJS = (node) ->
     when '_'
       # 1 _ 1   ->   error 'currying'
       throw Error 'Invalid currying'
+    when 'dollarConstant'
+      switch node[1]
+        when '$'     then 'null'
+        when '$f'    then 'false'
+        when '$t'    then 'true'
+        when '$pinf' then 'Infinity'
+        when '$ninf' then '(-Infinity)'
+        when '$e'    then 'Math.E'
+        when '$pi'   then 'Math.PI'
+        when '$np'   then throw Error '$np is not implemented' # TODO
+        else throw Error 'Unrecognised constant, ' + JSON.stringify node[1]
     else
       throw Error 'Compiler error: Unrecognised node type, ' + node[0]
 

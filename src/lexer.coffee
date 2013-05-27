@@ -28,8 +28,8 @@ tokenDefs = [
                     | \+\+
                     | [\(\)\[\]\{\};_]
                 )///]
+  ['dollarConstant', /^\$(f|t|pinf|ninf|e|pi|np)?/]
   ['name',      /^[a-z][a-z0-9]*/i]
-  ['name',      /^\$(f|t|pinf|ninf|e|pi|np)?/]
   ['name',      ///^(?:
                       <:
                     | >:
