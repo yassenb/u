@@ -114,6 +114,7 @@ renderJS = (node) ->
       # x==5; f==@{:: x}; x==6; f . x   ->   6
       # TODO test that creating a new function creates a new context
       # @{1 :: 123} . 3                 ->   error 'Only the simplest form of patterns are supported'
+      # @{x :: x+y ++ y==1} . 2         ->   3
       body = ''
       for [_0, pattern, guard, result] in node[1...-1]
         if pattern
@@ -131,10 +132,10 @@ renderJS = (node) ->
             }
           """
         body += returnStatement
-      if local
-        throw Error 'Not implemented: local clause within function'
+      local = node[node.length - 1]
       r = """
         helpers.createLambda(ctx, function (arg, ctx) {
+            #{if local then renderJS local else ''}
             #{body}
             return #{nameToJS '$'};
         })
