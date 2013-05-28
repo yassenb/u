@@ -22,14 +22,10 @@ renderJS = (node) ->
         "(#{renderJS(child)})"
       "(#{statements.join(',')})"
     when '=='
-      # [x;y]==[0;1]   ->   error 'Destructuring'
-      if node[1][0] isnt 'name'
-        # TODO left hand side can be a complex expression that is not a pattern, a different error should be produced
-        # in such case
-        throw Error 'Compiler error: Destructuring assignment is not implemented.'
-      # a==1; a     ->   1
-      # a==2+1; a   ->   3
-      nameToJS(node[1][1]) + '=' + renderJS node[2]
+      # [x;y]==[1;2]; x+y   ->   3
+      # a==1; a             ->   1
+      # a==2+1; a           ->   3
+      renderPatternJS node[1], renderJS node[2]
     when 'number'
       # 5   ->   5
       node[1]
@@ -174,3 +170,88 @@ nameToJS = (name) ->
     "ctx.#{name}"
   else
     "ctx[#{JSON.stringify name}]"
+
+# renderPatternJS() builds a JavaScript expression that evaluates to true when
+# the pattern is matched.  As a side effect during its evaluation, the
+# expression may associate names with values in the current context.
+renderPatternJS = (node, valueJS) ->
+  if node[0] is '_'
+    # _==1; $   ->   $
+    'true'
+  else if node[0] is 'name'
+    # a==1; a+a   ->   2
+    "#{nameToJS node[1]}=(#{valueJS}),true"
+  else if node[0] in ['number', 'string', 'dollarConstant']
+    # [a;1]==[2;1]; a      ->   2
+    # ['a;a]==['a;'b]; a   ->   'b
+    # [$t;$f;$pinf;$;a]==[$t;$f;$pinf;$;[1;2;3]]; a   ->   [1;2;3]
+    "#{valueJS}===(#{renderJS node})"
+  else if !/^[a-z0-9\.]*$/.test valueJS
+    # The rest of our node type options use valueJS at least twice in the
+    # compiled code.  So, unless valueJS is really simple, we wrap the code in
+    # a closure to prevent double computation.
+    """
+      (function (v) {
+        return #{renderPatternJS node, 'v'};
+      }(#{valueJS}))
+    """
+  else if node[0] is 'sequence'
+    # [x;[y;z]]==[1;[2;3]]; x+y+z   ->   6
+    r = "#{valueJS} instanceof Array"
+    r += " && #{valueJS}.length===#{node.length - 1}"
+    for child, i in node[1...]
+      r += " && (#{renderPatternJS child, "#{valueJS}[#{i}]"})"
+    r
+  else if node[0] is 'expression'
+    if node.length % 2
+      # x / y z == [1;2;3]   ->   error 'number of items'
+      throw Error 'Invalid pattern, expressions must consist of an odd number of items'
+    else if node.length is 2
+      renderPatternJS node[1], valueJS
+    else
+      # We apply only the last operation and invoke renderPatternJS recursively.
+      leftArgNode  = node[...-2]
+      opNode       = node[node.length - 2]
+      rightArgNode = node[node.length - 1]
+      if opNode[0] isnt 'name'
+        # x (_/_) y == [1;2;3]   ->   error 'simple functions'
+        throw Error 'Invalid pattern, only simple functions are allowed'
+      switch opNode[1]
+        when '\\'
+          # x\y==[1;2;3]; x           ->   1
+          # x\y==[1;2;3]; y           ->   [2;3]
+          # x\(y\z)==[1;2;3]; x       ->   1
+          # x\(y\z)==[1;2;3]; y       ->   2
+          # x\(y\z)==[1;2;3]; z       ->   [3]
+          # x\y\z==[[1;2];3]; x       ->   1
+          # x\y\z==[[1;2];3]; y       ->   [2]
+          # x\y\z==[[1;2];3]; z       ->   [3]
+          # x\y==[1]; x               ->   1
+          # x\y==[1]; y               ->   []
+          """
+            #{valueJS} instanceof Array &&
+            #{valueJS}.length &&
+            (#{renderPatternJS leftArgNode, valueJS + '[0]'}) &&
+            (#{renderPatternJS rightArgNode, valueJS + '.slice(1)'})
+          """
+        when '/'
+          # x/y==[1;2]; x       ->   [1]
+          # x/y==[1;2]; y       ->   2
+          # x/y/z==[1;2;3]; x   ->   [1]
+          # x/y/z==[1;2;3]; y   ->   2
+          # x/y/z==[1;2;3]; z   ->   3
+          # x\y/z==[1;2;3]; x   ->   1
+          # x\y/z==[1;2;3]; y   ->   [2]
+          # x\y/z==[1;2;3]; z   ->   3
+          """
+            #{valueJS} instanceof Array &&
+            #{valueJS}.length &&
+            (#{renderPatternJS leftArgNode, valueJS + '.slice(0,-1)'}) &&
+            (#{renderPatternJS rightArgNode, "#{valueJS}[#{valueJS}.length - 1]"})
+          """
+        else
+          # x+y==3   ->   error 'obverse'
+          throw Error "Invalid pattern, we don't know how to compile the obverse of #{JSON.stringify node[1]}"
+  else
+    # ?{x::y;z}==123   ->   error 'Invalid pattern'
+    throw Error "Invalid pattern, encountered node of type #{JSON.stringify node[0]}"
