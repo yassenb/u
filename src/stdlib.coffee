@@ -23,7 +23,8 @@ _ = require '../lib/underscore'
         x[y]
       else if -x.length <= y < 0
         # [1;2].(-.1)   ->   2
-        x[x.length - y]
+        # "abc.(-.2)    ->   'b
+        x[x.length + y]
       else
         # [1;2;3].3     ->   $
         # "hello.10     ->   $
