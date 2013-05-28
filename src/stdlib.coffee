@@ -70,6 +70,51 @@ _ = require '../lib/underscore'
   else
     throw Error 'Unsupported argument types for +'
 
+@['-'] = (a) ->
+  if a not instanceof Array
+    a = [a]
+
+  if a.length is 1
+    x = a[0]
+    if typeof x in ['number', 'boolean']
+      # -.$t   ->   - . 1
+      -x # JavaScript's unary minus coerces its argument to a number
+    else
+      # -.'a   ->   error 'Unsupported argument type'
+      throw Error 'Unsupported argument type for -'
+  else if a.length is 2
+    [x, y] = a
+    if typeof x in ['number', 'boolean'] and typeof y in ['number', 'boolean']
+      # 2 - 3     ->   - . 1
+      # 2 - 3     ->   - . 1
+      # $f - $t   ->   - . 1
+      # 3 - $t    ->   2
+      x - y # JavaScript's minus operator coerces its arguments to numbers
+    else if x instanceof Array and y instanceof Array
+      # [8;1;5;5;1;5;5;1;9;9;1]-[0;1;5;8;1;5;5]  ->  [5;1;9;9;1]
+      # [1;2;3;4;5] - [1;4;7]    ->   [2;3;5]
+      # [[1;2];[3;4]] - [[1;2]]  ->   [[3;4]]
+      r = x[...] # make a copy of x
+      for yi in y
+        for rj, j in r when eq yi, rj
+          r.splice j, 1 # remove the j-th element from r
+          break
+      r
+    else if typeof x is typeof y is 'string'
+      # "mississippi-"dismiss   ->   "sippi
+      r = x
+      for yi in y when (j = r.indexOf yi) isnt -1
+        r = r[...j] + r[j + 1...] # remove the j-th character from r
+      r
+    else
+      # 1-[1;2;3]   ->   error 'Unsupported argument types'
+      # $-0         ->   error 'Unsupported argument types'
+      throw Error 'Unsupported argument types for -'
+  else
+    # -.[]        ->   error 'arguments'
+    # -.[1;2;3]   ->   error 'arguments'
+    throw Error '- takes one or two arguments but got ' + a.length
+
 # $=$                         ->   $t
 # 1=1                         ->   $t
 # 1+2=3                       ->   $t
