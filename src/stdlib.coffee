@@ -53,7 +53,8 @@
 # 2 + $t         ->   3
 # $t + 2         ->   3
 @['+'] = (a) ->
-  if a.length isnt 2
+  if a not instanceof Array or a.length isnt 2
+    # + . 1   ->   error '+ takes exactly two arguments'
     throw Error '+ takes exactly two arguments'
   [x, y] = a
   if typeof x in ['number', 'boolean'] and typeof y in ['number', 'boolean']
