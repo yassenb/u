@@ -162,7 +162,9 @@ renderJS = (node) ->
         when '$e'    then 'Math.E'
         when '$pi'   then 'Math.PI'
         when '$np'   then throw Error '$np is not implemented' # TODO
-        else throw Error 'Unrecognised constant, ' + JSON.stringify node[1]
+        else
+          # $pinfinity   ->   error 'Unrecognised constant'
+          throw Error 'Unrecognised constant, ' + JSON.stringify node[1]
     else
       throw Error 'Compiler error: Unrecognised node type, ' + node[0]
 
