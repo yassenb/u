@@ -1,3 +1,5 @@
+_ = require '../lib/underscore'
+
 @['.'] = (a) ->
   if not (a instanceof Array) or a.length isnt 2
     # ..[1;2;3]   ->   error 'Arguments to . must be a sequence of length 2'
@@ -67,3 +69,28 @@
     x + y
   else
     throw Error 'Unsupported argument types for +'
+
+# $=$                         ->   $t
+# 1=1                         ->   $t
+# 1+2=3                       ->   $t
+# 1+2=4                       ->   $f
+# [1]=1                       ->   $f
+# [1;2;3]=[1;2;3]             ->   $t
+# [1;[2;'3]]=[1;[2;'3]]       ->   $t
+# [1;2;3]=[1;'(2,3)]          ->   $f
+# '(123)=[1;2;3]=[1;'(2,3)]   ->   $f
+# TODO does $t equal 1?
+# TODO how do we treat NaN-s?
+@['='] = (a) ->
+  if a not instanceof Array or a.length isnt 2
+    throw Error '= takes exactly two arguments'
+  eq a[0], a[1]
+
+eq = (x, y) ->
+  if x is y # translates to JavaScript's "===", which is type-safe
+    true
+  else if x instanceof Array and y instanceof Array and x.length is y.length
+    for xi, i in x when not eq xi, y[i] then return false
+    true
+  else
+    false
