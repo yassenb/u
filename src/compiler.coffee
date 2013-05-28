@@ -111,9 +111,12 @@ renderJS = (node) ->
       # TODO test that creating a new function creates a new context
       # @{1 :: 123} . 3                 ->   error 'Only the simplest form of patterns are supported'
       # @{x :: x+y ++ y==1} . 2         ->   3
+      # TODO a missing pattern or guard must default to the previous clause
+      # TODO a missing result must default to the next clause
       body = ''
       for [_0, pattern, guard, result] in node[1...-1]
         if pattern
+          # TODO use renderPatternJS() to compile the pattern
           if pattern[0] isnt 'name'
             throw Error 'Only the simplest form of patterns are supported---names'
           body += nameToJS(pattern[1]) + ' = arg;\n'
@@ -137,6 +140,7 @@ renderJS = (node) ->
         })
       """
     when 'local'
+      # TODO use renderPatternJS() to compile the patterns
       (
         for child in node[1...]
           if child[0] isnt '=='
