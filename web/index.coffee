@@ -1,4 +1,6 @@
-{parse} = require 'src/parser'
+_ = require 'lib/underscore'
+
+{parse} = require 'src/peg-parser/u-grammar'
 {tokenize} = require 'src/lexer'
 {compile, exec} = require 'src/compiler'
 
@@ -47,16 +49,25 @@ jQuery ($) ->
         false
       true
 
-renderAST = (node, indent = '  ') ->
-  if node is null
-    indent + 'null'
-  else if node.length is 2 and typeof node[1] is 'string'
-    indent + node[0] + ' ' + JSON.stringify node[1]
-  else
-    indent + node[0] + '\n' + (
-      for child in node[1...]
-        renderAST child, indent + '  '
-    ).join '\n'
+renderAST = (node, indent = '') ->
+  indent +
+    if typeof node == 'string'
+      JSON.stringify node
+    else if node instanceof Array
+      nodes = _(node).map (n) ->
+        renderAST n, indent + '  '
+      """
+        [
+        #{nodes.join('\n')}
+        #{indent}]
+      """
+    else
+      result = for k, v of node
+        """
+          #{k}:
+          #{renderAST(v, indent + '  ')}
+        """
+      result.join('\n' + indent)
 
 # repr(x) gives a string representation of U's data structures.
 # Function objects are rendered as "@{...}"

@@ -1,6 +1,6 @@
 _ = require '../lib/underscore'
 
-{parse} = require './parser'
+{parse} = require './peg-parser/u-grammar'
 stdlib = require './stdlib'
 helpers = require './helpers'
 
