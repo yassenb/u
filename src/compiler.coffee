@@ -104,54 +104,51 @@ renderJS = (node) ->
       else
         r
     when 'function'
-      # @{:: 123} . 3                   ->   123
-      # @{a :: a+2} . 3                 ->   5
-      # x==5; @{:: x} . $               ->   5
-      # x==5; f==@{:: x}; x==6; f . x   ->   6
+      # @{:: 123} . 3                      ->   123
+      # @{a :: a+2} . 3                    ->   5
+      # x==5; @{:: x} . $                  ->   5
+      # x==5; f==@{:: x}; x==6; f . x      ->   6
       # TODO test that creating a new function creates a new context
-      # @{1 :: 123} . 3                 ->   error 'Only the simplest form of patterns are supported'
-      # @{x :: x+y ++ y==1} . 2         ->   3
-      # TODO a missing pattern or guard must default to the previous clause
-      # TODO a missing result must default to the next clause
-      body = ''
-      for [_0, pattern, guard, result] in node[1...-1]
-        if pattern
-          # TODO use renderPatternJS() to compile the pattern
-          if pattern[0] isnt 'name'
-            throw Error 'Only the simplest form of patterns are supported---names'
-          body += nameToJS(pattern[1]) + ' = arg;\n'
-        returnStatement = "return #{if result then renderJS result else 'null'};"
-        if guard
-          # @{a (1) :: a+2} . 3         ->   5
-          # @{(1) :: 123} . 3           ->   123
-          # @{a (0) :: a+2; :: 6} . 3   ->   6
-          returnStatement = """
-            if (#{renderJS guard}) {
-                #{returnStatement}
-            }
-          """
-        body += returnStatement
+      # @{1 :: 2} . 1                      ->   2
+      # @{1 :: 2} . 3                      ->   $
+      # @{x :: x+y ++ y==1} . 2            ->   3
+      # @{a (1) :: a+2} . 3                ->   5
+      # @{(1) :: 123} . 3                  ->   123
+      # @{a (0) :: a+2; _ ($t) :: 6} . 3   ->   6
+      # 5 @{[x;y]::x+y+y} 3                ->   11
+      # @{[x;y]::x+y+y} . 3                ->   $
+      resultJS = ''
+      clauses = node[1...-1]
+      for [nodeType, pattern, guard, outcome], i in clauses
+        if nodeType isnt 'clause'
+          throw Error 'Expected node of type "::" but got ' + JSON.stringify nodeType
+        # A missing pattern or guard defaults to that from the previous clause.
+        pattern ?= if i then clauses[i - 1][1] else ['_', '_']
+        guard   ?= if i then clauses[i - 1][2] else ['dollarConstant', '$t']
+        # A missing outcome defaults to the next clause's outcome.
+        outcome ?= if i < clauses.length - 1 then clauses[i + 1][3] else ['dollarConstant', '$']
+        resultJS += "(#{renderPatternJS pattern, 'arg'}) && (#{renderJS guard}) ? (#{renderJS outcome}) : "
       local = node[node.length - 1]
-      r = """
+      """
         helpers.createLambda(ctx, function (arg, ctx) {
             #{if local then renderJS local else ''}
-            #{body}
-            return null;
+            return #{resultJS} null;
         })
       """
     when 'local'
-      # TODO use renderPatternJS() to compile the patterns
-      (
-        for child in node[1...]
-          if child[0] isnt '=='
-            throw Error 'Compiler error: Only "==" nodes (assignments) are supported inside a local.'
-          pattern = child[1]
-          if pattern[0] isnt 'name'
-            throw Error 'Only the simplest form of patterns are supported---names'
-          name = pattern[1]
-          expr = child[2]
-          "#{nameToJS name} = #{renderJS expr};\n"
-      ).join ''
+      # Note: "local" nodes are rendered as a JavaScript statement, not as an expression
+      """
+        if (!(#{
+          (
+            for child in node[1...]
+              if child[0] isnt '=='
+                throw Error 'Compiler error: Only "==" nodes (assignments) are supported inside a local.'
+              "(#{renderPatternJS child[1], renderJS child[2]})"
+          ).join '&&\n'
+        })) {
+          throw Error('Unmatched pattern');
+        }
+      """
     when '_'
       # 1 _ 1   ->   error 'currying'
       throw Error 'Invalid currying'
