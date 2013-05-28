@@ -117,6 +117,47 @@ _ = require '../lib/underscore'
     # -.[1;2;3]   ->   error 'arguments'
     throw Error '- takes one or two arguments but got ' + a.length
 
+@['*'] = (a) ->
+  if a not instanceof Array
+    a = [a]
+
+  if a.length is 1
+    x = a[0]
+    if typeof x in ['number', 'boolean']
+      # * . 123         ->   1
+      # * . [- . 123]   ->   - . 1
+      # * . 0           ->   0
+      # * . $t          ->   1
+      # * . $f          ->   0
+      (x > 0) - (x < 0) # signum
+    else
+      # * . 'a          ->   error 'Unsupported argument type'
+      throw Error 'Unsupported argument type for *'
+  else
+    [x, y] = a
+    if typeof x in ['number', 'boolean'] and typeof y in ['number', 'boolean']
+      # 2 * 3           ->   6
+      # $t * 5          ->   5
+      x * y
+    else if (x instanceof Array or typeof x is 'string') and typeof y in ['number', 'boolean']
+      # [2;5]*3         ->   [2;5;2;5;2;5]
+      # "abc*2          ->   "abcabc
+      # [17]*$f         ->   []
+      # "abc*0          ->   '()
+      # TODO should we allow i*q as well?
+      y = +y
+      if y isnt ~~y or y < 0
+        # [2;5]*$pi       ->   error 'non-negative integer'
+        # [2;5]*(- . 1)   ->   error 'non-negative integer'
+        # 'a*$pinf        ->   error 'non-negative integer'
+        throw Error 'Multiplier for sequence or string must be a non-negative integer.'
+      r = if typeof x is 'string' then '' else []
+      for [0...y] then r = r.concat x
+      r
+    else
+      # 'a * 'b         ->   error 'Unsupported argument types'
+      throw Error 'Unsupported argument types for *'
+
 # $=$                         ->   $t
 # 1=1                         ->   $t
 # 1+2=3                       ->   $t
