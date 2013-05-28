@@ -186,7 +186,7 @@ renderPatternJS = (node, valueJS) ->
     # ['a;a]==['a;'b]; a   ->   'b
     # [$t;$f;$pinf;$;a]==[$t;$f;$pinf;$;[1;2;3]]; a   ->   [1;2;3]
     "#{valueJS}===(#{renderJS node})"
-  else if !/^[a-z0-9\.]*$/.test valueJS
+  else if !/^[a-z][a-z\d\.]*(\[\d+\])*$/i.test valueJS
     # The rest of our node type options use valueJS at least twice in the
     # compiled code.  So, unless valueJS is really simple, we wrap the code in
     # a closure to prevent double computation.
