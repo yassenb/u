@@ -43,7 +43,6 @@ renderJS = (node) ->
           s[1...]
       )
     when 'name'
-      # a   ->   a
       nameToJS node[1]
     when 'expression'
       # 2 + 3 4               ->   error 'Invalid expression'
