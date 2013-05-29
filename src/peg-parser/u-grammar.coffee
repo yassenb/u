@@ -13,11 +13,12 @@ class UGrammar extends Peg
         sequence: @seq '[', ['elements', @optional(@oneOrMoreWithSep(@ref('expr'), ';'))], ']'
         closure: @or @ref('parametric'), @or(@ref('conditional'), @ref('function'))
         parametric: @seq '{', @ref('expr'), @ref('local'), '}'
-        conditional: @seq('?{', ['tests', @oneOrMoreWithSep(@seq(@ref('expr', 'condition'), '::', @ref('expr')), ';')],
-          @optional(@seq(';', @ref('expr', 'else'))), @optional(@ref('local')), '}')
+        conditional: @seq('?{',
+          ['tests', @oneOrMoreWithSep(@seq(['condition', @ref('expr')], '::', @ref('expr')), ';')],
+          @optional(@seq(';', ['else', @ref('expr')])), @optional(@ref('local')), '}')
         function: @seq '@{', ['clauses', @oneOrMoreWithSep(@ref('clause'), ';')], @optional(@ref('local')), '}'
-        clause: @seq @optional(@ref('pattern')), @optional(@seq('(', @ref('expr', 'guard'), ')')), '::',
-                     @optional(@ref('expr'))
+        clause: @seq @optional(@ref('pattern')), @optional(@seq('(', ['guard', @ref('expr')], ')')), '::',
+                     @optional(['body', @ref('expr')])
         local: @seq '++', ['defs', @oneOrMoreWithSep(@ref('def'), ';')]
         const: @or ['number', 'number'], @or(['string', 'string'], @or(['name', 'name'],
           ['dollarConstant', 'dollarConstant']))

@@ -126,10 +126,10 @@ renderJS = (node) ->
       # ?{x::2;y::3;4 ++ x==$f; y==$t}   ->   3
       r = _(node.tests).reduce(
         (r, test) ->
-          r + "(#{renderJS { expr: test.condition }})?(#{renderJS _(test).pick 'expr'}):"
+          r + "(#{renderJS test.condition})?(#{renderJS _(test).pick 'expr'}):"
         ''
       )
-      r += if node.else then renderJS { expr: node.else } else 'null'
+      r += if node.else then renderJS node.else else 'null'
       withLocal node.local, r
 
     when 'function'
@@ -148,7 +148,7 @@ renderJS = (node) ->
       # 5 @{[x;y]::x+y+y} 3                #->   11
       # @{[x;y]::x+y+y} . 3                #->   $
       resultJS = ''
-      for { clause: {pattern, guard, expr} }, i in node.clauses
+      for { clause: {pattern, guard, body} }, i in node.clauses
         # A missing pattern or guard defaults to that from the previous clause.
         # TODO refactor this ugliness
         pattern =
@@ -162,24 +162,24 @@ renderJS = (node) ->
 
         guard =
           if guard?
-            renderJS { expr: guard }
+            renderJS guard
           else
             if i > 0
-              renderJS { expr: node.clauses[i - 1].guard }
+              renderJS node.clauses[i - 1].guard
             else
               'true'
-        # A missing outcome defaults to the next clause's outcome.
-        # TODO what if the next clause has no outcome as well?
-        outcome =
-          if expr?
-            renderJS { expr: expr }
+        # A missing body defaults to the next clause's body.
+        # TODO what if the next clause has no body as well?
+        body =
+          if body?
+            renderJS body
           else
             if i < node.clauses.length - 1
-              renderJS { expr: node.clauses[i + 1].expr }
+              renderJS node.clauses[i + 1].body
             else
               'null'
 
-        resultJS += "(#{pattern}) && (#{guard}) ? (#{outcome}) : "
+        resultJS += "(#{pattern}) && (#{guard}) ? (#{body}) : "
       resultJS += 'null'
 
       withLocal node.local, """
