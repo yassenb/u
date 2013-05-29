@@ -19,7 +19,8 @@ class UGrammar extends Peg
         clause: @seq @optional(@ref('pattern')), @optional(@seq('(', @ref('expr', 'guard'), ')')), '::',
                      @optional(@ref('expr'))
         local: @seq '++', ['defs', @oneOrMoreWithSep(@ref('def'), ';')]
-        const: @or ['number', 'number'], @or(['string', 'string'], ['name', 'name'])
+        const: @or ['number', 'number'], @or(['string', 'string'], @or(['name', 'name'],
+          ['dollarConstant', 'dollarConstant']))
         # TODO
         pattern: @ref('const')
       }

@@ -11,42 +11,42 @@ _ = require '../lib/underscore'
 #
 #   * '' means that the token's type should be the same as its value
 tokenDefs = [
-  ['-',         /\s+/]          # whitespace
-  ['-',         /"[^a-z\{].*/i] # line comment
-  ['-',         ///             # block comment
-                  "\{.*
-                  (?: \s* (?: " | "[^\}].* | [^"].* ) [\n\r]+ )*
-                  "\}.*         # TODO block comments can be nested
-                ///]
-  ['number',    /\d+/]          # TODO floating point numbers
-  ['string',    /'\(('[^]|[^'\)])*\)/]
-  ['string',    /'[^\(]/]
-  ['string',    /"[a-z][a-z0-9]*/i]
-  ['',          ///(?:
-                      ==
-                    | \?\{
-                    | @\{
-                    | ::
-                    | \+\+
-                    | [\(\)\[\]\{\};_]
-                )///]
-  ['name',      /\$[a-z]*/i]
-  ['name',      /[a-z][a-z0-9]*/i]
-  ['name',      ///(?:
-                      <:
-                    | >:
-                    | \|:
-                    | =>
-                    | \|\|
-                    | <=
-                    | >=
-                    | <>
-                    | ,,
-                    | >>
-                    | <<
-                    | %%
-                )///]
-  ['name',      /[\+\-\*:\^=<>\/\\\.\#!%~\|,&]/]
+  ['-',              /\s+/]          # whitespace
+  ['-',              /"[^a-z\{].*/i] # line comment
+  ['-',              ///             # block comment
+                       "\{.*
+                       (?: \s* (?: " | "[^\}].* | [^"].* ) [\n\r]+ )*
+                       "\}.*         # TODO block comments can be nested
+                     ///]
+  ['number',         /\d+/]          # TODO floating point numbers
+  ['string',         /'\(('[^]|[^'\)])*\)/]
+  ['string',         /'[^\(]/]
+  ['string',         /"[a-z][a-z0-9]*/i]
+  ['',               ///(?:
+                           ==
+                         | \?\{
+                         | @\{
+                         | ::
+                         | \+\+
+                         | [\(\)\[\]\{\};_]
+                     )///]
+  ['dollarConstant', /\$[a-z]*/i]
+  ['name',           /[a-z][a-z0-9]*/i]
+  ['name',           ///(?:
+                           <:
+                         | >:
+                         | \|:
+                         | =>
+                         | \|\|
+                         | <=
+                         | >=
+                         | <>
+                         | ,,
+                         | >>
+                         | <<
+                         | %%
+                     )///]
+  ['name',           /[\+\-\*:\^=<>\/\\\.\#!%~\|,&]/]
 ]
 
 # Converts source code into a token stream with look ahead capabilities. A token has:

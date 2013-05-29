@@ -55,6 +55,20 @@ renderJS = (node) ->
     when 'name'
       nameToJS node
 
+    when 'dollarConstant'
+      switch node
+        when '$'     then 'null'
+        when '$f'    then 'false'
+        when '$t'    then 'true'
+        when '$pinf' then 'Infinity'
+        when '$ninf' then '(-Infinity)'
+        when '$e'    then 'Math.E'
+        when '$pi'   then 'Math.PI'
+        when '$np'   then throw Error '$np is not implemented' # TODO
+        else
+          # $pinfinity   ->   error 'Unrecognised constant'
+          throw Error 'Unrecognised constant, ' + JSON.stringify node
+
     when 'sequence'
       # + . [1;2]   ->   3
       "[#{_(node.elements).map(renderJS).join ','}]"
@@ -188,20 +202,7 @@ withLocal = (local, expression) ->
     expression
 
 nameToJS = (name) ->
-  if /^\$/.test name
-    switch name
-      when '$'     then 'null'
-      when '$f'    then 'false'
-      when '$t'    then 'true'
-      when '$pinf' then 'Infinity'
-      when '$ninf' then '(-Infinity)'
-      when '$e'    then 'Math.E'
-      when '$pi'   then 'Math.PI'
-      when '$np'   then throw Error '$np is not implemented' # TODO
-      else
-        # $pinfinity   ->   error 'Unrecognised constant'
-        throw Error 'Unrecognised constant, ' + JSON.stringify name
-  else if /^[a-z_\$][a-z0-9_\$]*$/i.test name
+  if /^[a-z_\$][a-z0-9_\$]*$/i.test name
     "ctx.#{name}"
   else
     "ctx[#{JSON.stringify name}]"
@@ -213,7 +214,7 @@ renderPatternJS = (node, valueJS) ->
   konst = node.const
   if name = konst.name
     "#{nameToJS name}=(#{valueJS}),true"
-  else if konst.number or konst.string
+  else if konst.number or konst.string or konst.dollarConstant
     "#{renderJS konst}===(#{valueJS})"
   else
     # TODO
