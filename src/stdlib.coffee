@@ -45,7 +45,7 @@ coerce = (xs, ts) ->
           when 'i' then x = +x; typeof xs[i] in ['number', 'boolean'] and x is ~~x
           when 'b' then typeof x is 'boolean'
           when 'q' then x instanceof Array or typeof x is 'string'
-          when 's' then x instanceof Array
+          when 's' then typeof x is 'string'
           when 'p' then false # TODO pictures
           when 'f' then typeof x is 'function'
           when 'x' then true
@@ -118,50 +118,41 @@ coerce = (xs, ts) ->
   # concatenated to one another?
 )
 
-@['-'] = (a) ->
-  if a not instanceof Array
-    a = [a]
+@['-'] = polymorphic(
 
-  if a.length is 1
-    x = a[0]
-    if typeof x in ['number', 'boolean']
-      # -.$t   ->   - . 1
-      -x # JavaScript's unary minus coerces its argument to a number
-    else
-      # -.'a   ->   error 'Unsupported argument type'
-      throw Error 'Unsupported argument type for -'
-  else if a.length is 2
-    [x, y] = a
-    if typeof x in ['number', 'boolean'] and typeof y in ['number', 'boolean']
-      # 2 - 3     ->   - . 1
-      # 2 - 3     ->   - . 1
-      # $f - $t   ->   - . 1
-      # 3 - $t    ->   2
-      x - y # JavaScript's minus operator coerces its arguments to numbers
-    else if x instanceof Array and y instanceof Array
-      # [8;1;5;5;1;5;5;1;9;9;1]-[0;1;5;8;1;5;5]  ->  [5;1;9;9;1]
-      # [1;2;3;4;5] - [1;4;7]    ->   [2;3;5]
-      # [[1;2];[3;4]] - [[1;2]]  ->   [[3;4]]
-      r = x[...] # make a copy of x
-      for yi in y
-        for rj, j in r when eq yi, rj
-          r.splice j, 1 # remove the j-th element from r
-          break
-      r
-    else if typeof x is typeof y is 'string'
-      # "mississippi-"dismiss   ->   "sippi
-      r = x
-      for yi in y when (j = r.indexOf yi) isnt -1
-        r = r[...j] + r[j + 1...] # remove the j-th character from r
-      r
-    else
-      # 1-[1;2;3]   ->   error 'Unsupported argument types'
-      # $-0         ->   error 'Unsupported argument types'
-      throw Error 'Unsupported argument types for -'
-  else
-    # -.[]        ->   error 'arguments'
-    # -.[1;2;3]   ->   error 'arguments'
-    throw Error '- takes one or two arguments but got ' + a.length
+  # -.$t   ->   - . 1
+  # -.'a   ->   error 'Unsupported'
+  (n) -> -n
+
+  # 2 - 3     ->   - . 1
+  # 2 - 3     ->   - . 1
+  # $f - $t   ->   - . 1
+  # 3 - $t    ->   2
+  (n1, n2) -> n1 - n2
+
+  # "mississippi-"dismiss   ->   "sippi
+  (s1, s2) ->
+    r = s1
+    for c in s2 when (j = r.indexOf c) isnt -1
+      r = r[...j] + r[j + 1...] # remove the j-th character from r
+    r
+
+  # [8;1;5;5;1;5;5;1;9;9;1]-[0;1;5;8;1;5;5]  ->  [5;1;9;9;1]
+  # [1;2;3;4;5] - [1;4;7]    ->   [2;3;5]
+  # [[1;2];[3;4]] - [[1;2]]  ->   [[3;4]]
+  (q1, q2) ->
+    r = q1[...] # make a copy
+    for x in q2
+      for y, j in r when eq x, y
+        r.splice j, 1 # remove the j-th element from r
+        break
+    r
+
+  # 1-[1;2;3]   ->   error 'Unsupported'
+  # $-0         ->   error 'Unsupported'
+  # -.[]        ->   error 'Unsupported'
+  # -.[1;2;3]   ->   error 'Unsupported'
+)
 
 @['*'] = (a) ->
   if a not instanceof Array
