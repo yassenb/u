@@ -148,7 +148,7 @@ renderJS = (node) ->
       # 5 @{[x;y]::x+y+y} 3                #->   11
       # @{[x;y]::x+y+y} . 3                #->   $
       resultJS = ''
-      for { clause: {pattern, guard, body} }, i in node.clauses
+      for { clause: { functionlhs: { pattern, guard }, body } }, i in node.clauses
         # A missing pattern or guard defaults to that from the previous clause.
         # TODO refactor this ugliness
         pattern =
@@ -211,7 +211,7 @@ nameToJS = (name) ->
 # the pattern is matched.  As a side effect during its evaluation, the
 # expression may associate names with values in the current context.
 renderPatternJS = (node, valueJS) ->
-  konst = node.const
+  konst = node.expr[0].argument.const
   if name = konst.name
     "#{nameToJS name}=(#{valueJS}),true"
   else if konst.number or konst.string or konst.dollarConstant
