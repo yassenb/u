@@ -154,46 +154,37 @@ coerce = (xs, ts) ->
   # -.[1;2;3]   ->   error 'Unsupported'
 )
 
-@['*'] = (a) ->
-  if a not instanceof Array
-    a = [a]
+@['*'] = polymorphic(
 
-  if a.length is 1
-    x = a[0]
-    if typeof x in ['number', 'boolean']
-      # * . 123         ->   1
-      # * . [- . 123]   ->   - . 1
-      # * . 0           ->   0
-      # * . $t          ->   1
-      # * . $f          ->   0
-      (x > 0) - (x < 0) # signum
-    else
-      # * . 'a          ->   error 'Unsupported argument type'
-      throw Error 'Unsupported argument type for *'
-  else
-    [x, y] = a
-    if typeof x in ['number', 'boolean'] and typeof y in ['number', 'boolean']
-      # 2 * 3           ->   6
-      # $t * 5          ->   5
-      x * y
-    else if (x instanceof Array or typeof x is 'string') and typeof y in ['number', 'boolean']
-      # [2;5]*3         ->   [2;5;2;5;2;5]
-      # "abc*2          ->   "abcabc
-      # [17]*$f         ->   []
-      # "abc*0          ->   '()
-      # TODO should we allow i*q as well?
-      y = +y
-      if y isnt ~~y or y < 0
-        # [2;5]*$pi       ->   error 'non-negative integer'
-        # [2;5]*(- . 1)   ->   error 'non-negative integer'
-        # 'a*$pinf        ->   error 'non-negative integer'
-        throw Error 'Multiplier for sequence or string must be a non-negative integer.'
-      r = if typeof x is 'string' then '' else []
-      for [0...y] then r = r.concat x
-      r
-    else
-      # 'a * 'b         ->   error 'Unsupported argument types'
-      throw Error 'Unsupported argument types for *'
+  # * . 123         ->   1
+  # * . [- . 123]   ->   - . 1
+  # * . 0           ->   0
+  # * . $t          ->   1
+  # * . $f          ->   0
+  (n) -> (n > 0) - (n < 0) # signum
+
+  # 2 * 3           ->   6
+  # $t * 5          ->   5
+  (n1, n2) -> n1 * n2
+
+  # [2;5]*3         ->   [2;5;2;5;2;5]
+  # "abc*2          ->   "abcabc
+  # [17]*$f         ->   []
+  # "abc*0          ->   '()
+  # TODO should we allow i*q as well?
+  # [2;5]*$pi       ->   error 'Unsupported'
+  # [2;5]*(- . 1)   ->   error 'non-negative'
+  # 'a*$pinf        ->   error 'Unsupported'
+  (q, i) ->
+    if i < 0
+      throw Error 'Multiplier for sequence or string must be non-negative.'
+    r = q[...0] # gives '' if q is a string and [] if q is a list
+    for [0...i] then r = r.concat q
+    r
+
+  # * . 'a          ->   error 'Unsupported'
+  # 'a * 'b         ->   error 'Unsupported'
+)
 
 # $=$                         ->   $t
 # 1=1                         ->   $t
