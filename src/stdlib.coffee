@@ -86,26 +86,29 @@ coerce = (xs, ts) ->
   # 1 . 2         ->   error 'Unsupported'
 )
 
-# 1 + 1          ->   2
-# [1] + [2;3]    ->   [1;2;3]
-# [] + [2;3]     ->   [2;3]
-# [1;2;3] + []   ->   [1;2;3]
-# +.[]           ->   error 'Unsupported'
-# +.[1]          ->   error 'Unsupported'
-# +.[1;2;3;4]    ->   error 'Unsupported'
-# 1 + [1;2]      ->   error 'Unsupported'
-# +.[+;2]        ->   error 'Unsupported'
-# '(hell)+'o     ->   "hello
-# "hello+'()     ->   "hello
-# $t + $t        ->   2
-# 2 + $t         ->   3
-# $t + 2         ->   3
-# + . 1          ->   error 'Unsupported'
 @['+'] = polymorphic(
+
+  # 1 + 1          ->   2
+  # $t + $t        ->   2
+  # 2 + $t         ->   3
+  # $t + 2         ->   3
   (n1, n2) -> n1 + n2
-  (q1, q2) -> q1.concat q2
+
+  # [1] + [2;3]    ->   [1;2;3]
+  # [] + [2;3]     ->   [2;3]
+  # [1;2;3] + []   ->   [1;2;3]
+  # '(hell)+'o     ->   "hello
+  # "hello+'()     ->   "hello
   # TODO Are sequences and strings fundamentally distinct or can they be
   # concatenated to one another?
+  (q1, q2) -> q1.concat q2
+
+  # +.[]           ->   error 'Unsupported'
+  # +.[1]          ->   error 'Unsupported'
+  # +.[1;2;3;4]    ->   error 'Unsupported'
+  # 1 + [1;2]      ->   error 'Unsupported'
+  # +.[+;2]        ->   error 'Unsupported'
+  # + . 1          ->   error 'Unsupported'
 )
 
 @['-'] = polymorphic(
