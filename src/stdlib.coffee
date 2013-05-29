@@ -186,6 +186,21 @@ coerce = (xs, ts) ->
   # 'a * 'b         ->   error 'Unsupported'
 )
 
+@['^'] = polymorphic(
+
+  # 2^3               ->   8
+  # 3^2               ->   9
+  # (- . 1)^2         ->   1
+  # (- . 1)^(- . 1)   ->   - . 1
+  (n1, n2) -> Math.pow n1, n2
+
+  # (_+[1;2]^3).[777]     ->   [777;1;2;1;2;1;2]
+  # @{x::'<\x/'>}^3."xy   - >   '(<<<xy>>>)    " TODO enable this test after we implement \ and /
+  (f, i) ->
+    if i < 0 then throw Error 'Obverse functions are not supported.'
+    (a) -> (for [0...i] then a = f a); a
+)
+
 # $=$                         ->   $t
 # 1=1                         ->   $t
 # 1+2=3                       ->   $t
