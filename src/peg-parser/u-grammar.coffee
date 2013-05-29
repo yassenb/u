@@ -1,7 +1,7 @@
 {Peg} = require './parser'
 
 class UGrammar extends Peg
-  getGrammar: () ->
+  getGrammar: ->
     uGrammar = {
       rules: {
         program: ['program', @oneOrMoreWithSep(@or(@ref('def'), @ref('expr')), ';')]
@@ -28,7 +28,7 @@ class UGrammar extends Peg
     uGrammar
 
   oneOrMoreWithSep: (rule, separator) ->
-    () =>
+    =>
       parsed = @getParseResult rule
       if parsed
         [parsed].concat @zeroOrMore(@seq separator, rule)()

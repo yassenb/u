@@ -59,7 +59,7 @@ tokenDefs = [
   # get the next token
   next: ->
     loop
-      if position.code == ''
+      if position.code is ''
         return {
           type: 'eof', value: '',
           startLine: position.line, startCol: position.col, endLine: position.line, endCol: position.col

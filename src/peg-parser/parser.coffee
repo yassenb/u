@@ -7,38 +7,38 @@ class @Peg
     @grammar = @getGrammar()
 
   parse: (code) ->
-    @tokenStream = tokenize(code)
-    @seq(@grammar.start, 'eof')()
+    @tokenStream = tokenize code
+    do @seq @grammar.start, 'eof'
 
   node = (key, value) ->
     result = {}
-    result[key] = if value == true then null else value
+    result[key] = if value is true then null else value
     result
 
   ref: (rule, alias = null) ->
     =>
       parsed = @parseExpression @grammar.rules[rule]
-      if parsed != false
-        node(alias || rule, parsed)
+      if parsed isnt false
+        node(alias or rule, parsed)
       else
         false
 
   seq: ->
-    expresssions = arguments
+    expressions = arguments
     =>
       result = []
       position = @tokenStream.getPosition()
-      for expression in expresssions
+      for expression in expressions
         parsed = @parseExpression expression
-        if parsed != false
-          if parsed instanceof Object && !(parsed instanceof Array)
+        if parsed isnt false
+          if parsed instanceof Object and parsed not instanceof Array
             result.push parsed
         else
           result = false
-          @tokenStream.rollback(position)
+          @tokenStream.rollback position
           break
       if result
-        _.extend({}, result...)
+        _.extend {}, result...
       else
         false
 
@@ -46,25 +46,25 @@ class @Peg
     =>
       position = @tokenStream.getPosition()
       parsed = @parseExpression expression
-      if parsed != false
+      if parsed isnt false
         parsed
       else
-        @tokenStream.rollback(position)
+        @tokenStream.rollback position
         true
 
   or: (expression1, expression2) ->
     =>
       result = @getParseResult expression1
-      if result == false
+      if result is false
         result = @getParseResult expression2
       result
 
   oneOrMore: (expression) ->
     =>
       r = @getParseResult expression
-      if r != false
+      if r isnt false
         result = [r]
-        more = @zeroOrMore(expression)()
+        more = do @zeroOrMore expression
         if more
           result.concat more
         result
@@ -73,32 +73,32 @@ class @Peg
 
   zeroOrMore: (expression) ->
     =>
-      while (r = @getParseResult expression) != false
+      while (r = @getParseResult expression) isnt false
         r
 
   getParseResult: (expression) ->
     position = @tokenStream.getPosition()
     parsed = @parseExpression expression
-    if parsed != false
+    if parsed isnt false
       parsed
     else
-      @tokenStream.rollback(position)
+      @tokenStream.rollback position
       false
 
   parseExpression: (expression) ->
-    if typeof expression == 'string'
+    if typeof expression is 'string'
       token = @tokenStream.next()
-      if token.type == expression
+      if token.type is expression
         token.value
       else
         false
-    else if typeof expression == 'function'
+    else if typeof expression is 'function'
       expression()
     else if expression instanceof Array
       value = @parseExpression expression[1]
-      if value != false
+      if value isnt false
         node expression[0], value
       else
         false
     else
-      throw 'Unknow expression type'
+      throw 'Unknown expression type'

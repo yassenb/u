@@ -51,14 +51,14 @@ jQuery ($) ->
 
 renderAST = (node, indent = '') ->
   indent +
-    if typeof node == 'string'
+    if typeof node is 'string'
       JSON.stringify node
     else if node instanceof Array
       nodes = _(node).map (n) ->
         renderAST n, indent + '  '
       """
         [
-        #{nodes.join('\n')}
+        #{nodes.join '\n'}
         #{indent}]
       """
     else

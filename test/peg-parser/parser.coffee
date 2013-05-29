@@ -44,7 +44,7 @@ describe 'Peg', ->
     it 'allows referencing other rules', ->
       grammar = class extends TestGrammar
         getTestGrammar: -> {
-          start: @ref('var')
+          start: @ref 'var'
           var: 't1'
         }
       assertParse grammar, [
@@ -54,7 +54,7 @@ describe 'Peg', ->
     it 'allows aliasing ref nodes in the constructed AST', ->
       grammar = class extends TestGrammar
         getTestGrammar: -> {
-          start: @ref('def', 'var')
+          start: @ref 'def', 'var'
           def: 't1'
         }
       assertParse grammar, [
@@ -75,7 +75,7 @@ describe 'Peg', ->
     it 'constructs an empty node when there are no named elements in the sequence', ->
       grammar = class extends TestGrammar
         getTestGrammar: -> {
-          start: @ref('def')
+          start: @ref 'def'
           def: @seq 't1', '=', 't2', ';'
         }
       assertParse grammar, [
@@ -130,8 +130,8 @@ describe 'Peg', ->
     it 'provides an ordered choice', ->
       grammar = class extends TestGrammar
         getTestGrammar: -> {
-          start: @or ['first', @seq(@seq('t1', 't1', 't1'), @seq('t1'))],
-                     ['second', @seq(@seq('t1', 't1'), @seq('t1', 't1'))]
+          start: @or ['first', @seq @seq('t1', 't1', 't1'), @seq('t1')],
+                     ['second', @seq @seq('t1', 't1'), @seq('t1', 't1')]
         }
       assertParse grammar, [
         [[['t1', ''], ['t1', ''], ['t1', ''], ['t1', '']], { first: {} }]

@@ -47,14 +47,14 @@ describe 'lexer', ->
 
           3 + 75 + 4
         """
-        t = nextTimes(6, code)
+        t = nextTimes 6, code
         t.startLine.should.equal 7
         t.endLine.should.equal 7
         t.startCol.should.equal 5
         t.endCol.should.equal 6
 
       it 'throws on unrecognized token', ->
-        (-> nextTimes(1, '@')).should.throw /^Syntax error: unrecognized token/
+        (-> nextTimes 1, '@').should.throw /^Syntax error: unrecognized token/
 
     it 'can rollback to a specific state', ->
       t = tokenize '1+3+5+7'
@@ -66,9 +66,9 @@ describe 'lexer', ->
       t.next()
       position2 = t.getPosition()
       t.next()
-      t.rollback(position2)
+      t.rollback position2
       t.next().value.should.equal '5'
-      t.rollback(position1)
+      t.rollback position1
       t.next().value.should.equal '3'
 
     # TODO test all kinds of tokens and combinations

@@ -16,11 +16,11 @@ helpers = require './helpers'
 
 renderJS = (node) ->
   # 1 _ 1   ->   error 'currying'
-  if node == '_'
+  if node is '_'
     throw Error 'Invalid currying'
 
   keys = _(node).keys()
-  unless keys.length == 1
+  unless keys.length is 1
     throw Error 'Compiler error'
   exprType = keys[0]
 
@@ -29,8 +29,8 @@ renderJS = (node) ->
     when 'program'
       # 1;2;3   ->   3
       statements = _(node).map (child) ->
-        "(#{renderJS(child)})"
-      "(#{statements.join(',')})"
+        "(#{renderJS child})"
+      "(#{statements.join ','})"
 
     when 'const'
       renderJS node
@@ -44,7 +44,7 @@ renderJS = (node) ->
         if /^'\(/.test node
           # '(')rock''n'roll)   ->   '(')rock''n'roll)
           # '(()                ->   '(()
-          h = n: '\n', t: '\t', ')': ')', "'": "'", '\n': ''
+          h = { n: '\n', t: '\t', ')': ')', "'": "'", '\n': '' }
           node[2...-1].replace /'['tn\n]/g, (x) -> h[x[1]]
         else
           # 'a                  ->   '(a)
@@ -57,18 +57,18 @@ renderJS = (node) ->
 
     when 'sequence'
       # + . [1;2]   ->   3
-      "[#{_(node.elements).map(renderJS).join(',')}]"
+      "[#{_(node.elements).map(renderJS).join ','}]"
 
     when 'expr'
       # 2 + 3 + 4             ->   9
       # 2 + 3 @{ x :: 7 } 4   ->   7
 
       # Initial "_" must be treated differently from subsequent "_"-s.
-      if node[0].argument == '_'
-        if node.length == 1
+      if node[0].argument is '_'
+        if node.length is 1
           throw Error 'A single underscore cannot be used as an expression.'
 
-        if node[1].argument == '_'
+        if node[1].argument is '_'
           # _+_   ->   +
           r = renderJS node[1].operator # currying on both sides returns the function itself
         else
@@ -82,7 +82,7 @@ renderJS = (node) ->
 
       _(node[i..]).reduce(
         (r, expr) ->
-          if expr.argument == '_'
+          if expr.argument is '_'
             # (1+_).2   ->   3
             "helpers.curryLeft(#{renderJS expr.operator}, #{r})"
           else
@@ -98,7 +98,7 @@ renderJS = (node) ->
         renderPatternJS assignment.pattern, renderJS _(assignment).pick('expr')
 
     when 'defs'
-      _(node).map(renderJS).join(';\n')
+      _(node).map(renderJS).join ';\n'
 
     when 'closure'
       renderJS node
@@ -112,7 +112,7 @@ renderJS = (node) ->
       # ?{x::2;y::3;4 ++ x==$f; y==$t}   ->   3
       r = _(node.tests).reduce(
         (r, test) ->
-          r + "(#{renderJS { expr: test.condition }})?(#{renderJS _(test).pick('expr')}):"
+          r + "(#{renderJS { expr: test.condition }})?(#{renderJS _(test).pick 'expr'}):"
         ''
       )
       r += if node.else then renderJS { expr: node.else } else 'null'
@@ -213,7 +213,7 @@ renderPatternJS = (node, valueJS) ->
   konst = node.const
   if name = konst.name
     "#{nameToJS name}=(#{valueJS}),true"
-  else if konst.number || konst.string
+  else if konst.number or konst.string
     "#{renderJS konst}===(#{valueJS})"
   else
     # TODO
