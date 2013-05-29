@@ -188,7 +188,7 @@ coerce = (xs, ts) ->
   (n1, n2) -> Math.pow n1, n2
 
   # (_+[1;2]^3).[777]     ->   [777;1;2;1;2;1;2]
-  # @{x::'<\x/'>}^3."xy   - >   '(<<<xy>>>)    " TODO enable this test after we implement \ and /
+  # @{x::'<\x/'>}^3."xy   ->   '(<<<xy>>>)
   (f, i) ->
     if i < 0 then throw Error 'Obverse functions are not supported.'
     (a) -> (for [0...i] then a = f a); a
@@ -232,6 +232,42 @@ coerce = (xs, ts) ->
   (i, q) ->
     if i <= 0 then throw Error 'Sequence numerator must be positive.'
     for j in [0...q.length] by i then q[j...j+i]
+)
+
+@['\\'] = polymorphic(
+
+  # 'a\"bc   ->   "abc
+  # "ab\'c   ->   error 'must be a string of length 1'
+  (x, s) ->
+    if typeof x isnt 'string' or x.length isnt 1
+      throw Error 'In the expression "x\\s" where "s" is a string, "x" must be a string of length 1.'
+    x + s
+
+  # 1\[2;3]       ->   [1;2;3]
+  # 1\[]          ->   [1]
+  # [1;2]\[3;4]   ->   [[1;2];3;4]
+  (x, q) -> [x].concat q
+
+  # 1\2   ->   [1;2]
+  (x1, x2) -> [x1, x2]
+)
+
+@['/'] = polymorphic(
+
+  # "ab/'c   ->   "abc
+  # 'a/"bc   ->   error 'must be a string of length 1'
+  (s, x) ->
+    if typeof x isnt 'string' or x.length isnt 1
+      throw Error 'In the expression "s/x" where "s" is a string, "x" must be a string of length 1.'
+    s + x
+
+  # [1;2]/3       ->   [1;2;3]
+  # []/1          ->   [1]
+  # [1;2]/[3;4]   ->   [1;2;[3;4]]
+  (q, x) -> q.concat [x]
+
+  # 1/2   ->   [1;2]
+  (x1, x2) -> [x1, x2]
 )
 
 # $=$                         ->   $t
