@@ -201,6 +201,46 @@ coerce = (xs, ts) ->
     (a) -> (for [0...i] then a = f a); a
 )
 
+@[':'] = polymorphic(
+
+  # :.$pi   ->   1:$pi
+  # :.$t    ->   1
+  # :.$f    ->   $pinf
+  (n) -> 1 / n
+
+  # $t:$f   ->   $pinf
+  # 119:7   ->   17
+  (n1, n2) -> n1 / n2
+
+  # "abcdefghijkl:5   ->   ["abc;"def;"gh;"ij;"kl]
+  # [1;2;3;4]:1       ->   [[1;2;3;4]]
+  # [1;2;3;4]:2       ->   [[1;2];[3;4]]
+  # [1;2;3;4]:3       ->   [[1;2];[3];[4]]
+  # [1;2;3;4]:4       ->   [[1];[2];[3];[4]]
+  # [1;2;3;4]:5       ->   [[1];[2];[3];[4];[]]
+  # []:3              ->   [[];[];[]]
+  # [1;2;3]:(- . 1)   ->   error 'must be positive'
+  (q, i) ->
+    if i <= 0 then throw Error 'Sequence denominator must be positive.'
+    r = q.length % i
+    l = (q.length - r) / i
+    l1 = l + 1
+    (for j in [0...r] then q[j * l1 ... (j + 1) * l1])
+      .concat(for j in [r...i] then q[j * l + r ... (j + 1) * l + r])
+
+  # 5:"abcdefghijkl   ->   ["abcde;"fghij;"kl]
+  # 1:[1;2;3;4]       ->   [[1];[2];[3];[4]]
+  # 2:[1;2;3;4]       ->   [[1;2];[3;4]]
+  # 3:[1;2;3;4]       ->   [[1;2;3];[4]]
+  # 4:[1;2;3;4]       ->   [[1;2;3;4]]
+  # 5:[1;2;3;4]       ->   [[1;2;3;4]]
+  # 3:[]              ->   []
+  # (- . 1):[1;2;3]   ->   error 'must be positive'
+  (i, q) ->
+    if i <= 0 then throw Error 'Sequence numerator must be positive.'
+    for j in [0...q.length] by i then q[j...j+i]
+)
+
 # $=$                         ->   $t
 # 1=1                         ->   $t
 # 1+2=3                       ->   $t
