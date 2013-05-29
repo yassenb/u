@@ -54,47 +54,37 @@ coerce = (xs, ts) ->
       r.push x
     r
 
-@['.'] = (a) ->
-  if not (a instanceof Array) or a.length isnt 2
-    # ..[1;2;3]   ->   error 'Arguments to . must be a sequence of length 2'
-    throw Error 'Arguments to . must be a sequence of length 2'
-  [x, y] = a
-  if typeof x is 'function'
-    # +.[1;2]  ->  3
-    x y
-  else if x instanceof Array or typeof x is 'string'
-    if typeof y in ['number', 'boolean']
-      y = +y # if boolean, convert to number
-      if y isnt Math.floor y
-        # [1;2;3].$pi   ->   error 'Indices must be integers'
-        throw Error 'Indices must be integers'
-      else if 0 <= y < x.length
-        # [1;2;3].0     ->   1
-        # [1;2;3].2     ->   3
-        # [1;2;3].$f    ->   1
-        # [1;2;3].$t    ->   2
-        # "hello.1      ->   'e
-        x[y]
-      else if -x.length <= y < 0
-        # [1;2].(-.1)   ->   2
-        # "abc.(-.2)    ->   'b
-        x[x.length + y]
-      else
-        # [1;2;3].3     ->   $
-        # "hello.10     ->   $
-        # [1;2].(-.3)   ->   $
-        null
-    else if typeof y is 'function'
-      # [1;2;0;4;5].@{x::?{x::0;1}}   ->   2
-      # [1;2;3;4;5].@{x::?{x::0;1}}   ->   $
-      for e, i in x when y e then return i
-      null
-    else
-      # [1;2].[3;4]   ->   error 'Unsupported operation'
-      throw Error 'Unsupported operation'
-  else
-    # 1 . 2   ->   error 'Unsupported operation'
-    throw Error 'Unsupported operation'
+@['.'] = polymorphic(
+
+  # +.[1;2]  ->  3
+  (f, x) -> f x
+
+  # [1;2;3].0     ->   1
+  # [1;2;3].2     ->   3
+  # [1;2;3].$f    ->   1
+  # [1;2;3].$t    ->   2
+  # "hello.1      ->   'e
+  # [1;2].(-.1)   ->   2
+  # "abc.(-.2)    ->   'b
+  # [1;2;3].3     ->   $
+  # "hello.10     ->   $
+  # [1;2].(-.3)   ->   $
+  (q, i) ->
+    if 0 <= i < q.length then q[i]
+    else if -q.length <= i < 0 then q[q.length + i]
+    else null
+
+  # [1;2;0;4;5].@{x::?{x::0;1}}   ->   2
+  # [1;2;3;4;5].@{x::?{x::0;1}}   ->   $
+  (q, f) ->
+    for x, i in q when f x then return i
+    null
+
+  # ..[1;2;3]     ->   error 'Unsupported'
+  # [1;2;3].$pi   ->   error 'Unsupported'
+  # [1;2].[3;4]   ->   error 'Unsupported'
+  # 1 . 2         ->   error 'Unsupported'
+)
 
 # 1 + 1          ->   2
 # [1] + [2;3]    ->   [1;2;3]
