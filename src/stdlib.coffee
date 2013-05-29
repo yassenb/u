@@ -1,5 +1,59 @@
 _ = require '../lib/underscore'
 
+# polymorphic(...) combines a list of functions into a single function that
+# does type dispatching.  For instance
+#     polymorphic(
+#       (n) --> sgn n
+#       (n1, n2) --> n1 * n2
+#       (s, i) --> Array(i + 1).join(s)
+#       (q, i) --> r = []; (for [0...i] then r = r.concat q); r
+#     )
+# could be an implementation for the * function.
+# It introspects parameter names for their initials and tries to coerce actual
+# arguments to the respective types before passing them:
+#     n   number or boolean
+#     i   integer or boolean
+#     b   boolean
+#     q   sequence or string
+#     s   string
+#     p   picture
+#     f   function
+#     x   anything
+# If coercion fails, we try the next polymorphic variant.
+# If all variants fail, we throw an error.
+polymorphic = (fs...) ->
+  signatures =
+    for f in fs
+      for t in ('' + f).replace(/^\s*function\s*\(([^\)]*)\)[^]+$/, '$1').split /\s*,\s*/
+        t[0]
+  (a) ->
+    if a not instanceof Array then a = [a]
+    for f, i in fs when (xs = coerce a, signatures[i]) then return f xs...
+    throw Error 'Unsupported operation'
+
+# coerce(...) takes a list `xs` of values and a type signature `ts` (which is a
+# sequence of type initials) and tries to coerce each value to its respective
+# type.
+# It returns either undefined or a vector of coerced values.
+coerce = (xs, ts) ->
+  if xs.length is ts.length
+    r = []
+    for x, i in xs
+      return unless (
+        switch ts[i]
+          when 'n' then x = +x; typeof xs[i] in ['number', 'boolean']
+          when 'i' then x = +x; typeof xs[i] in ['number', 'boolean'] and x is ~~x
+          when 'b' then typeof x is 'boolean'
+          when 'q' then x instanceof Array or typeof x is 'string'
+          when 's' then x instanceof Array
+          when 'p' then false # TODO pictures
+          when 'f' then typeof x is 'function'
+          when 'x' then true
+          else throw Error 'Bad type symbol, ' + JSON.stringify ts[i]
+      )
+      r.push x
+    r
+
 @['.'] = (a) ->
   if not (a instanceof Array) or a.length isnt 2
     # ..[1;2;3]   ->   error 'Arguments to . must be a sequence of length 2'
@@ -46,9 +100,9 @@ _ = require '../lib/underscore'
 # [1] + [2;3]    ->   [1;2;3]
 # [] + [2;3]     ->   [2;3]
 # [1;2;3] + []   ->   [1;2;3]
-# +.[]           ->   error '+ takes exactly two arguments'
-# +.[1]          ->   error '+ takes exactly two arguments'
-# +.[1;2;3;4]    ->   error '+ takes exactly two arguments'
+# +.[]           ->   error 'Unsupported'
+# +.[1]          ->   error 'Unsupported'
+# +.[1;2;3;4]    ->   error 'Unsupported'
 # 1 + [1;2]      ->   error 'Unsupported'
 # +.[+;2]        ->   error 'Unsupported'
 # '(hell)+'o     ->   "hello
@@ -56,21 +110,13 @@ _ = require '../lib/underscore'
 # $t + $t        ->   2
 # 2 + $t         ->   3
 # $t + 2         ->   3
-@['+'] = (a) ->
-  if a not instanceof Array or a.length isnt 2
-    # + . 1   ->   error '+ takes exactly two arguments'
-    throw Error '+ takes exactly two arguments'
-  [x, y] = a
-  if typeof x in ['number', 'boolean'] and typeof y in ['number', 'boolean']
-    x + y
-  else if x instanceof Array and y instanceof Array
-    x.concat y
-  else if typeof x is typeof y is 'string'
-    # TODO Are sequences and strings fundamentally distinct or can they be
-    # concatenated to one another?
-    x + y
-  else
-    throw Error 'Unsupported argument types for +'
+# + . 1          ->   error 'Unsupported'
+@['+'] = polymorphic(
+  (n1, n2) -> n1 + n2
+  (q1, q2) -> q1.concat q2
+  # TODO Are sequences and strings fundamentally distinct or can they be
+  # concatenated to one another?
+)
 
 @['-'] = (a) ->
   if a not instanceof Array
