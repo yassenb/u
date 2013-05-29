@@ -30,7 +30,7 @@ tokenDefs = [
                     | \+\+
                     | [\(\)\[\]\{\};_]
                 )///]
-  ['dollarConstant', /\$[a-z]*/i]
+  ['name',      /\$[a-z]*/i]
   ['name',      /[a-z][a-z0-9]*/i]
   ['name',      ///(?:
                       <:

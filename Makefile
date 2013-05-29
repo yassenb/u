@@ -65,9 +65,8 @@ $(compiled_dir)/lib/%.js: lib/%.js
 test: build $(test_compiled)
 	@echo "(target) running tests..."
 	@cd $(compiled_dir); ../$(mocha)
-	@# TODO enable after PEG parser is implemented
-	@# echo "(target) running doc tests..."
-	@# @node $(compiled_dir)/test/doctest
+	@echo "(target) running doc tests..."
+	@node $(compiled_dir)/test/doctest
 
 node_modules: package.json
 	@echo "(target) updating node modules..."
