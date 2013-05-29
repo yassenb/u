@@ -207,15 +207,79 @@ nameToJS = (name) ->
   else
     "ctx[#{JSON.stringify name}]"
 
-# renderPatternJS() builds a JavaScript expression that evaluates to true when
-# the pattern is matched.  As a side effect during its evaluation, the
-# expression may associate names with values in the current context.
-renderPatternJS = (node, valueJS) ->
-  konst = node.expr[0].argument.const
-  if name = konst.name
-    "#{nameToJS name}=(#{valueJS}),true"
-  else if konst.number or konst.string or konst.dollarConstant
-    "#{renderJS konst}===(#{valueJS})"
+# renderPatternJS() builds a JavaScript expression that evaluates to true when the pattern is matched. As a side effect
+# during its evaluation, the expression may associate names with values in the current context.
+renderPatternJS = (pattern, valueJS) ->
+  if pattern.expr
+    return renderPatternJS pattern.expr, valueJS
+
+  if pattern.length == 1
+    value = pattern[0].argument
+    if value is '_'
+      # _==1; $   ->   $
+      'true'
+    else if konst = value.const
+      if name = konst.name
+        # a==1; a+a   ->   2
+        "#{nameToJS name}=(#{valueJS}),true"
+      else
+        # [a;1]==[2;1]; a      ->   2
+        # ['a;a]==['a;'b]; a   ->   'b
+        # [$t;$f;$pinf;$;a]==[$t;$f;$pinf;$;[1;2;3]]; a   ->   [1;2;3]
+        "#{valueJS}===(#{renderJS konst})"
+    else if value.expr
+      # TODO Is this correct? Test! Also test braces in patterns
+      renderPatternJS value, valueJS
+    # The rest of the value options use valueJS at least twice in the compiled code. So, unless valueJS is really
+    # simple, we wrap the code in a closure to prevent double computation.
+    # TODO move this and simplify it, invoke unconditionally on valueJS but only for sequences and complex patterns
+    else if !/^[a-z][a-z\d\.]*(\[\d+\])*$/i.test valueJS
+      """
+        (function (v) {
+          return #{renderPatternJS pattern, 'v'};
+        }(#{valueJS}))
+      """
+    else if seq = value.sequence?.elements
+      # [x;[y;z]]==[1;[2;3]]; x+y+z   ->   6
+      _(seq).reduce(
+        (r, elem, i) ->
+          r + " && (#{renderPatternJS elem, "#{valueJS}[#{i}]"})"
+        "#{valueJS} instanceof Array && #{valueJS}.length===#{seq.length}"
+      )
+    else  # value.closure
+      # TODO test
+      throw Error 'Invalid pattern, pattern can\'t be a closure'
+
   else
-    # TODO
-    throw Error 'Unsupported pattern'
+    # Apply only the last operation and invoke renderPatternJS recursively.
+    pattern = _(pattern)
+    operator = pattern.last().operator
+    leftArg = pattern.initial()
+    rightArg = [_(pattern.last()).pick('argument')]
+
+    switch operator.const?.name
+      when '\\'
+        # x\y==[1;2;3]; [x;y]         ->   [1;[2;3]]
+        # x\(y\z)==[1;2;3]; [x;y;z]   ->   [1;2;[3]]
+        # x\y\z==[[1;2];3]; [x;y;z]   ->   [1;[2];[3]]
+        # x\y==[1]; [x;y]             ->   [1;[]]
+        """
+          #{valueJS} instanceof Array &&
+          #{valueJS}.length &&
+          (#{renderPatternJS leftArg, valueJS + '[0]'}) &&
+          (#{renderPatternJS rightArg, valueJS + '.slice(1)'})
+        """
+      when '/'
+        # x/y==[1;2]; [x;y]         ->   [[1];2]
+        # x/y/z==[1;2;3]; [x;y;z]   ->   [[1];2;3]
+        # x\y/z==[1;2;3]; [x;y;z]   ->   [1;[2];3]
+        """
+          #{valueJS} instanceof Array &&
+          #{valueJS}.length &&
+          (#{renderPatternJS leftArg, valueJS + '.slice(0,-1)'}) &&
+          (#{renderPatternJS rightArg, "#{valueJS}[#{valueJS}.length - 1]"})
+        """
+      else
+        # x+y==3   ->   error 'pattern'
+        # x (_/_) y == [1;2;3]   ->   error 'pattern'
+        throw Error 'Invalid pattern, only \\ and / are allowed'
