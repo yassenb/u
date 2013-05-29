@@ -234,6 +234,50 @@ coerce = (xs, ts) ->
     for j in [0...q.length] by i then q[j...j+i]
 )
 
+@['<'] = polymorphic(
+
+  # 12 < 3   ->   $f
+  # 1 < 23   ->   $t
+  # 1 < 1    ->   $f
+  # $f < 1   ->   $t
+  # $t < 1   ->   $f
+  (n1, n2) -> n1 < n2
+
+  # '(12) < '3   ->   $t
+  # '() < '( )   ->   $t
+  # 'A < 'a      ->   $t
+  # 'b < 'a      ->   $f
+  (s1, s2) -> s1 < s2
+
+  # 3       < "abcdefgh      ->   "abc
+  # (- . 3) < "abcdefgh      ->   "defgh
+  # 3 < "ab                  ->   "ab
+  # (- . 3) < "ab            ->   '()
+  # 3       < [1;2;3;4;5]    ->   [1;2;3]
+  # (- . 3) < [1;2;3;4;5]    ->   [4;5]
+  # 3 < [1;2]                ->   [1;2]
+  # (- . 3) < [1;2]          ->   []
+  (i, q) -> if i >= 0 then q[...i] else q[-i...]
+
+
+  # -<[6;3;9;2]   ->   10
+  # -<[123]       ->   123
+  # -<[]          ->   $
+  # +<"abcd       ->   "abcd
+  # -<'()         ->   $
+  (f, q) ->
+    if q.length
+      r = q[q.length - 1]
+      for i in [q.length - 2 .. 0] by -1
+        r = f [q[i], r]
+      r
+    else
+      null
+
+  # <.(sum on _).[_^2;1;2;3]   - >   14   " TODO enable test when "on" is implemented
+  (f) -> throw Error '<.f is not implemented' # TODO implement as @{f::@{x\y::f.x.y}}
+)
+
 @['\\'] = polymorphic(
 
   # 'a\"bc   ->   "abc
