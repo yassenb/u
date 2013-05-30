@@ -608,7 +608,6 @@ eq = (x, y) ->
   # ~.'()    ->   '()
   (s) -> s.split('').reverse().join('')
 
-  # TODO fix ~.q and enable tests
   # ~ . [1;2;3]   ->   [3;2;1]
   # ~ . []        ->   []
   (q) -> q[...].reverse()
