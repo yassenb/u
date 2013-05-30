@@ -54,6 +54,15 @@ coerce = (xs, ts) ->
       r.push x
     r
 
+eq = (x, y) ->
+  if x is y # translates to JavaScript's "===", which is type-safe
+    true
+  else if x instanceof Array and y instanceof Array and x.length is y.length
+    for xi, i in x when not eq xi, y[i] then return false
+    true
+  else
+    false
+
 @['+'] = polymorphic(
 
   # 1 + 1          ->   2
@@ -200,6 +209,22 @@ coerce = (xs, ts) ->
   (i, q) ->
     if i <= 0 then throw Error 'Sequence numerator must be positive.'
     for j in [0...q.length] by i then q[j...j+i]
+)
+
+@['='] = polymorphic(
+
+  # $=$                         ->   $t
+  # 1=1                         ->   $t
+  # 1+2=3                       ->   $t
+  # 1+2=4                       ->   $f
+  # [1]=1                       ->   $f
+  # [1;2;3]=[1;2;3]             ->   $t
+  # [1;[2;'3]]=[1;[2;'3]]       ->   $t
+  # [1;2;3]=[1;'(2,3)]          ->   $f
+  # '(123)=[1;2;3]=[1;'(2,3)]   ->   $f
+  # TODO does $t equal 1?
+  # TODO how do we treat NaN-s?
+  (x1, x2) -> eq x1, x2
 )
 
 @['<'] = polymorphic(
@@ -504,28 +529,3 @@ coerce = (xs, ts) ->
   # (1+_)<<(2*_) . 3   ->   7
   (f1, f2) -> (a) -> f1 f2 a
 )
-
-# $=$                         ->   $t
-# 1=1                         ->   $t
-# 1+2=3                       ->   $t
-# 1+2=4                       ->   $f
-# [1]=1                       ->   $f
-# [1;2;3]=[1;2;3]             ->   $t
-# [1;[2;'3]]=[1;[2;'3]]       ->   $t
-# [1;2;3]=[1;'(2,3)]          ->   $f
-# '(123)=[1;2;3]=[1;'(2,3)]   ->   $f
-# TODO does $t equal 1?
-# TODO how do we treat NaN-s?
-@['='] = (a) ->
-  if a not instanceof Array or a.length isnt 2
-    throw Error '= takes exactly two arguments'
-  eq a[0], a[1]
-
-eq = (x, y) ->
-  if x is y # translates to JavaScript's "===", which is type-safe
-    true
-  else if x instanceof Array and y instanceof Array and x.length is y.length
-    for xi, i in x when not eq xi, y[i] then return false
-    true
-  else
-    false
