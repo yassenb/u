@@ -663,7 +663,34 @@ eq = (x, y) ->
     r
 )
 
-@['||'] = -> throw Error 'Not implemented' # TODO
+@['||'] = polymorphic(
+
+  #      ||.[[0;1;2];
+  # ...      [3;4;5];
+  # ...      [6;7;8]]
+  # ...                  ->   [[0;3;6];
+  # ...                        [1;4;7];
+  # ...                        [2;5;8]]
+  #
+  # ||.[[0;1;2];[3;4;5];[6;7]]     ->   [[0;3;6];[1;4;7]]
+  # ||.[]                          ->   []
+  # ||.[[];[1];[1;2]]              ->   []
+  # ||.[[];[1];[1;2]]              ->   []
+  (q) ->
+    if q not instanceof Array
+      # ||.'a   ->   error 'must be a sequence.'
+      throw Error 'The argument to || must be a sequence.'
+    if q.length is 0 then return []
+    m = Infinity # length of the shortest sequence
+    for a in q
+      if a not instanceof Array
+        # ||.[[];'a]   ->   error 'sequence of sequences'
+        throw Error 'The argument to || must be a sequence of sequences.'
+      m = Math.min m, a.length
+    for i in [0...m]
+      for a in q
+        a[i]
+)
 
 @['.'] = polymorphic(
 
