@@ -322,6 +322,93 @@ coerce = (xs, ts) ->
   (f) -> throw Error '>.f is not implemented' # TODO implement as @{f::@{x::@{y::f.(x\y)}}}
 )
 
+@['|'] = polymorphic(
+
+  # |.123         ->   123
+  # |.(- . 123)   ->   123
+  # |.$f          ->   0
+  # |.$t          ->   1
+  (n) -> Math.abs n
+
+  # $f|$f   ->   $f
+  # $f|$t   ->   $t
+  # $t|$t   ->   $t
+  # $t|$t   ->   $t
+  (b1, b2) -> b1 or b2
+
+  # 3|5          ->   5
+  # (- . 3)|$t   ->   1
+  (n1, n2) -> Math.max n1, n2
+
+  # "star|"trek        ->   "starek
+  # '()|"abracadabra   ->   "abrcd
+  (s1, s2) ->
+    r = s1
+    for x in s2
+      if r.indexOf(x) is -1
+        r += x
+    r
+
+  # [5;7;4;2]|[7;2;3;8]          ->   [5;7;4;2;3;8]
+  # []|[4;6;2;4;0;4;8;4;6;2;4]   ->   [4;6;2;0;8]
+  (q1, q2) ->
+    # TODO Should we tolerate mixing strings and sequences, like "[1;2;3]|'(abc)" and "'(abc)|[1;2;3]"?
+    r = q1[...]
+    for x in q2
+      found = false
+      for y in r when eq y, x
+        found = true
+        break
+      if not found
+        r.push x
+    r
+
+  # 4(|.:)5   ->   5:4
+  (f) ->
+    # TODO implement in U as @{f::@{x\(y\r)::f.(y\(x\r))}}
+    (a) ->
+      if a not instanceof Array or a.length < 2 then null
+      else f [a[1], a[0]].concat a[2...]
+)
+
+@['&'] = polymorphic(
+
+  # $f&$f   ->   $f
+  # $f&$t   ->   $f
+  # $t&$f   ->   $f
+  # $t&$t   ->   $t
+  (b1, b2) -> b1 and b2
+
+  # 12&34             ->   12
+  # (- . 2)&(- . 3)   ->   - . 3
+  # $f&123            ->   0
+  # 123&$t            ->   1
+  (n1, n2) -> Math.min n1, n2
+
+  # "aqua&"neutral   ->   "aua
+  # "aqua&'()        ->   '()
+  # '()&"aqua        ->   '()
+  # "aqua&"aqua      ->   "aqua
+  (s1, s2) ->
+    r = ''
+    for x in s1 when s2.indexOf(x) isnt -1
+      r += x
+    r
+
+  # [1;2;3;1]&[4;5;3;6;7;1;8]   ->   [1;3;1]
+  # [1;2;3]&[]                  ->   []
+  # []&[1;2;3]                  ->   []
+  # [1;2;3]&[1;2;3]             ->   [1;2;3]
+  (q1, q2) ->
+    r = []
+    for x in q1
+      for y in q2 when eq x, y
+        r.push x
+        break
+    r
+)
+
+
 @['\\'] = polymorphic(
 
   # 'a\"bc   ->   "abc
