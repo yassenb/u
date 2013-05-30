@@ -408,6 +408,51 @@ coerce = (xs, ts) ->
     r
 )
 
+@[','] = polymorphic(
+
+  # (- . 2),3   ->   [- . 2; - . 1; 0; 1; 2]
+  # 0,5         ->   [0;1;2;3;4]
+  # 5,0         ->   [5;4;3;2;1]
+  # 5,5         ->   []
+  # $e,5        ->   [$e; 1+$e; 2+$e]
+  (n1, n2) -> [n1...n2]
+
+  # 1,[10;3]         ->   [1;4;7]
+  # 10,[1;(- . 3)]   ->   [10;7;4]
+  # 10,[1;3]         ->   []
+  # $pi,[10;$e]      ->   [$pi; $pi+$e; $pi+(2*$e)]
+  (n1, q) ->
+    if q not instanceof Array or q.length isnt 2 or
+            typeof q[0] not in ['number', 'boolean'] or
+            typeof q[1] not in ['number', 'boolean']
+      throw Error 'The signature of "," is either "n1,n2" or "n1,[n2;n3]".'
+    n2 = +q[0]
+    n3 = +q[1]
+    for i in [n1...n2] by n3 then i
+)
+
+@[',,'] = polymorphic(
+
+  # (- . 2),,3   ->   [- . 2; - . 1; 0; 1; 2; 3]
+  # 0,,5         ->   [0;1;2;3;4;5]
+  # 5,,0         ->   [5;4;3;2;1;0]
+  # 5,,5         ->   [5]
+  # $e,5         ->   [$e; 1+$e; 2+$e]
+  (n1, n2) -> [n1..n2]
+
+  # 1,,[10;3]         ->   [1;4;7;10]
+  # 10,,[1;(- . 3)]   ->   [10;7;4;1]
+  # 10,,[1;3]         ->   []
+  # $pi,,[10;$e]      ->   [$pi; $pi+$e; $pi+(2*$e)]
+  (n1, q) ->
+    if q not instanceof Array or q.length isnt 2 or
+            typeof q[0] not in ['number', 'boolean'] or
+            typeof q[1] not in ['number', 'boolean']
+      throw Error 'The signature of "," is either "n1,n2" or "n1,[n2;n3]".'
+    n2 = +q[0]
+    n3 = +q[1]
+    for i in [n1..n2] by n3 then i
+)
 
 @['\\'] = polymorphic(
 
