@@ -13,7 +13,7 @@ forEachDoctest = (handler, continuation) ->
         while i < lines.length and (m = lines[i].match(/^ *# *\.\.\.(.*)$/))
           line += '\n' + m[1]
           i++
-        if m = line.match /^ *#(.*) -> (.+)$/
+        if m = line.match /^ *#([^]*) -> ([^]+)$/
           handler code: trim(m[1]), expectation: trim(m[2])
     continuation?()
 
