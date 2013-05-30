@@ -237,7 +237,25 @@ eq = (x, y) ->
   (n1, n2) -> [(q = Math.ceil n1 / n2), n1 - q * n2]
 )
 
-@['|:'] = -> throw Error 'Not implemented' # TODO
+@['|:'] = polymorphic(
+
+  # |:.$pi       ->   3
+  # |:.(-.$pi)   ->   -.3
+  # |:.$e        ->   3
+  # |:.(1:2)     ->   0
+  # |:.(3:2)     ->   2
+  # |:.(-.1:2)   ->   0
+  # |:.(-.3:2)   ->   -.2
+  round = (n) ->
+    x = Math.floor n
+    d = n - x
+    if d < .5 then x
+    else if d > .5 then x + 1
+    else x + Math.abs(x) % 2
+
+  # 34|:(-.5)      ->   [-.7;-.1]
+  (n1, n2) -> [(q = round n1 / n2), n1 - q * n2]
+)
 
 @['<'] = polymorphic(
 
