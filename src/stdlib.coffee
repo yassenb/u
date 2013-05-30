@@ -54,38 +54,6 @@ coerce = (xs, ts) ->
       r.push x
     r
 
-@['.'] = polymorphic(
-
-  # +.[1;2]  ->  3
-  (f, x) -> f x
-
-  # [1;2;3].0     ->   1
-  # [1;2;3].2     ->   3
-  # [1;2;3].$f    ->   1
-  # [1;2;3].$t    ->   2
-  # "hello.1      ->   'e
-  # [1;2].(-.1)   ->   2
-  # "abc.(-.2)    ->   'b
-  # [1;2;3].3     ->   $
-  # "hello.10     ->   $
-  # [1;2].(-.3)   ->   $
-  (q, i) ->
-    if 0 <= i < q.length then q[i]
-    else if -q.length <= i < 0 then q[q.length + i]
-    else null
-
-  # [1;2;0;4;5].@{x::?{x::0;1}}   ->   2
-  # [1;2;3;4;5].@{x::?{x::0;1}}   ->   $
-  (q, f) ->
-    for x, i in q when f x then return i
-    null
-
-  # ..[1;2;3]     ->   error 'Unsupported'
-  # [1;2;3].$pi   ->   error 'Unsupported'
-  # [1;2].[3;4]   ->   error 'Unsupported'
-  # 1 . 2         ->   error 'Unsupported'
-)
-
 @['+'] = polymorphic(
 
   # 1 + 1          ->   2
@@ -488,6 +456,38 @@ coerce = (xs, ts) ->
 
   # 1/2   ->   [1;2]
   (x1, x2) -> [x1, x2]
+)
+
+@['.'] = polymorphic(
+
+  # +.[1;2]  ->  3
+  (f, x) -> f x
+
+  # [1;2;3].0     ->   1
+  # [1;2;3].2     ->   3
+  # [1;2;3].$f    ->   1
+  # [1;2;3].$t    ->   2
+  # "hello.1      ->   'e
+  # [1;2].(-.1)   ->   2
+  # "abc.(-.2)    ->   'b
+  # [1;2;3].3     ->   $
+  # "hello.10     ->   $
+  # [1;2].(-.3)   ->   $
+  (q, i) ->
+    if 0 <= i < q.length then q[i]
+    else if -q.length <= i < 0 then q[q.length + i]
+    else null
+
+  # [1;2;0;4;5].@{x::?{x::0;1}}   ->   2
+  # [1;2;3;4;5].@{x::?{x::0;1}}   ->   $
+  (q, f) ->
+    for x, i in q when f x then return i
+    null
+
+  # ..[1;2;3]     ->   error 'Unsupported'
+  # [1;2;3].$pi   ->   error 'Unsupported'
+  # [1;2].[3;4]   ->   error 'Unsupported'
+  # 1 . 2         ->   error 'Unsupported'
 )
 
 @['=>'] = polymorphic(
