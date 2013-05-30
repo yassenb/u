@@ -502,7 +502,23 @@ eq = (x, y) ->
     for i in [n1..n2] by n3 then i
 )
 
-@['#'] = -> throw Error 'Not implemented' # TODO
+@['#'] = polymorphic(
+
+  # #."abc        ->   3
+  # #.'a          ->   1
+  # #.'('t)       ->   1
+  # #.'()         ->   0
+  # #.[1;2;3]     ->   3
+  # 123#456       ->   2
+  # 123#[4;5;6]   ->   2
+  # #.[1]         ->   1
+  # #.[]          ->   0
+  (q) -> q.length
+
+  # # . 123       ->   error 'Unsupported'
+  # # . $t        ->   error 'Unsupported'
+  # # . $         ->   error 'Unsupported'
+)
 
 @['\\'] = polymorphic(
 
