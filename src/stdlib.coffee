@@ -536,7 +536,30 @@ eq = (x, y) ->
   (x1, x2) -> [x1, x2]
 )
 
-@['~'] = -> throw Error 'Not implemented' # TODO
+@['~'] = polymorphic(
+
+  # ~.$t   ->   $f
+  # ~.$f   ->   $t
+  (b) -> not b
+
+  # 1 (~.=) 1   ->   $f
+  # 1 (~.=) 2   ->   $t
+  # 1 (~.+) 2   ->   $
+  # 0 (~.+) 0   ->   $
+  (f) -> (a) -> if typeof (r = f a) is 'boolean' then not r else null
+
+  # ~."abc   ->   "cba
+  # ~.'()    ->   '()
+  (s) -> s.split('').reverse().join('')
+
+  # TODO fix ~.q and enable tests
+  # ~ . [1;2;3]   - >   [3;2;1]
+  # ~ . []        - >   []
+  #(q) - > q[...].reverse()
+
+  # ~ . 0   ->   error 'Unsupported'
+  # ~ . $   ->   error 'Unsupported'
+)
 
 @['!'] = -> throw Error 'Not implemented' # TODO
 
