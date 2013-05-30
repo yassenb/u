@@ -637,9 +637,31 @@ eq = (x, y) ->
     for x in q2 when p x then f x
 )
 
-@['%'] = -> throw Error 'Not implemented' # TODO
+@['%'] = polymorphic(
 
-@['%%'] = -> throw Error 'Not implemented' # TODO
+  # q=="abcd; q._>>(_<>'b)%(0,(#.q))   ->   [0;2;3]
+  (f, s) -> s.replace /[^]/g, (x) -> if f x then x else ''
+
+  # _<4 % [5;2;4;1;3]   ->   [2;1;3]
+  (f, q) -> for x in q when f x then x
+)
+
+@['%%'] = polymorphic(
+
+  # _<'d %% "acebd   ->   ["acb;"ed]
+  # _<'d %% '()      ->   ['();'()]
+  (f, s) ->
+    r = ['', '']
+    for x in s then r[+!f x] += x
+    r
+
+  # _<4 %% [1;3;5;2;4]   ->   [[1;3;2];[5;4]]
+  # _<4 %% []            ->   [[];[]]
+  (f, q) ->
+    r = [[], []]
+    for x in q then r[+!f x].push x
+    r
+)
 
 @['||'] = -> throw Error 'Not implemented' # TODO
 
