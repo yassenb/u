@@ -27,32 +27,36 @@ polymorphic = (fs...) ->
       for t in ('' + f).replace(/^\s*function\s*\(([^\)]*)\)[^]+$/, '$1').split /\s*,\s*/
         t[0]
   (a) ->
-    if a not instanceof Array then a = [a]
     for f, i in fs when (xs = coerce a, signatures[i]) then return f xs...
-    throw Error 'Unsupported operation'
+    throw Error """
+      Unsupported operation,
+      Argument: #{JSON.stringify a}
+      Acceptable signatures: #{JSON.stringify signatures}
+      Function name: #{JSON.stringify arguments.callee.uName}
+    """
 
-# coerce(...) takes a list `xs` of values and a type signature `ts` (which is a
-# sequence of type initials) and tries to coerce each value to its respective
-# type.
-# It returns either undefined or a vector of coerced values.
-coerce = (xs, ts) ->
-  if xs.length is ts.length
-    r = []
-    for x, i in xs
-      return unless (
-        switch ts[i]
-          when 'n' then x = +x; typeof xs[i] in ['number', 'boolean']
-          when 'i' then x = +x; typeof xs[i] in ['number', 'boolean'] and x is ~~x
-          when 'b' then typeof x is 'boolean'
-          when 'q' then x instanceof Array or typeof x is 'string'
-          when 's' then typeof x is 'string'
-          when 'p' then false # TODO pictures
-          when 'f' then typeof x is 'function'
-          when 'x' then true
-          else throw Error 'Bad type symbol, ' + JSON.stringify ts[i]
-      )
-      r.push x
-    r
+# coerce(...) takes an object `a` (which could be an array) and a type signature `ts` (which is a sequence of type
+# initials) and tries to coerce `a` to the respective type or types.
+# It returns either undefined or an array of coerced values.
+coerce = (a, ts) ->
+  if ts.length is 2
+    if a instanceof Array and a.length is 2 and
+            (x = coerce a[0], [ts[0]]) and
+            (y = coerce a[1], [ts[1]])
+      x.concat y
+  else if ts.length is 1
+    switch ts[0]
+      when 'n' then if typeof a in ['number', 'boolean'] then [+a]
+      when 'i' then if typeof a in ['number', 'boolean'] and +a is ~~a then [+a]
+      when 'b' then if typeof a is 'boolean' then [a]
+      when 'q' then if a instanceof Array or typeof a is 'string' then [a]
+      when 's' then if typeof a is 'string' then [a]
+      when 'p' then undefined # TODO pictures
+      when 'f' then if typeof a is 'function' then [a]
+      when 'x' then [a]
+      else throw Error 'Bad type symbol, ' + JSON.stringify ts[0]
+  else
+    throw Error 'Bad type signature, ' + JSON.stringify ts
 
 eq = (x, y) ->
   if x is y # translates to JavaScript's "===", which is type-safe
@@ -127,7 +131,7 @@ eq = (x, y) ->
 @['*'] = polymorphic(
 
   # * . 123         ->   1
-  # * . [- . 123]   ->   - . 1
+  # * . (- . 123)   ->   - . 1
   # * . 0           ->   0
   # * . $t          ->   1
   # * . $f          ->   0
@@ -615,3 +619,6 @@ eq = (x, y) ->
   # (1+_)<<(2*_) . 3   ->   7
   (f1, f2) -> (a) -> f1 f2 a
 )
+
+# Remember each built-in function's name in case we need it for debugging purposes
+for k, v of @ when typeof v is 'function' then v.uName = k
