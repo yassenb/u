@@ -211,21 +211,11 @@ eq = (x, y) ->
     for j in [0...q.length] by i then q[j...j+i]
 )
 
-@['='] = polymorphic(
+@['<:'] = -> throw Error 'Not implemented' # TODO
 
-  # $=$                         ->   $t
-  # 1=1                         ->   $t
-  # 1+2=3                       ->   $t
-  # 1+2=4                       ->   $f
-  # [1]=1                       ->   $f
-  # [1;2;3]=[1;2;3]             ->   $t
-  # [1;[2;'3]]=[1;[2;'3]]       ->   $t
-  # [1;2;3]=[1;'(2,3)]          ->   $f
-  # '(123)=[1;2;3]=[1;'(2,3)]   ->   $f
-  # TODO does $t equal 1?
-  # TODO how do we treat NaN-s?
-  (x1, x2) -> eq x1, x2
-)
+@['>:'] = -> throw Error 'Not implemented' # TODO
+
+@['|:'] = -> throw Error 'Not implemented' # TODO
 
 @['<'] = polymorphic(
 
@@ -270,6 +260,28 @@ eq = (x, y) ->
   # <.(sum on _).[_^2;1;2;3]   - >   14   " TODO enable test when "on" is implemented
   (f) -> throw Error '<.f is not implemented' # TODO implement as @{f::@{x\y::f.x.y}}
 )
+
+@['<='] = throw Error 'Not implemented' # TODO
+
+@['='] = polymorphic(
+
+  # $=$                         ->   $t
+  # 1=1                         ->   $t
+  # 1+2=3                       ->   $t
+  # 1+2=4                       ->   $f
+  # [1]=1                       ->   $f
+  # [1;2;3]=[1;2;3]             ->   $t
+  # [1;[2;'3]]=[1;[2;'3]]       ->   $t
+  # [1;2;3]=[1;'(2,3)]          ->   $f
+  # '(123)=[1;2;3]=[1;'(2,3)]   ->   $f
+  # TODO does $t equal 1?
+  # TODO how do we treat NaN-s?
+  (x1, x2) -> eq x1, x2
+)
+
+@['<>'] = -> throw Error 'Not implemented' # TODO
+
+@['>='] = throw Error 'Not implemented' # TODO
 
 @['>'] = polymorphic(
 
@@ -447,6 +459,8 @@ eq = (x, y) ->
     for i in [n1..n2] by n3 then i
 )
 
+@['#'] = -> throw Error 'Not implemented' # TODO
+
 @['\\'] = polymorphic(
 
   # 'a\"bc   ->   "abc
@@ -482,6 +496,16 @@ eq = (x, y) ->
   # 1/2   ->   [1;2]
   (x1, x2) -> [x1, x2]
 )
+
+@['~'] = -> throw Error 'Not implemented' # TODO
+
+@['!'] = -> throw Error 'Not implemented' # TODO
+
+@['%'] = -> throw Error 'Not implemented' # TODO
+
+@['%%'] = -> throw Error 'Not implemented' # TODO
+
+@['||'] = -> throw Error 'Not implemented' # TODO
 
 @['.'] = polymorphic(
 
