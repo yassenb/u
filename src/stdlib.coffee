@@ -616,7 +616,26 @@ eq = (x, y) ->
   # ~ . $   ->   error 'Unsupported'
 )
 
-@['!'] = -> throw Error 'Not implemented' # TODO
+@['!'] = polymorphic(
+
+  # :![]          ->   []
+  # _^2![1;2;3]   ->   [1;4;9]
+  # _+'x!"abc     ->   ["ax;"bx;"cx]
+  # @{xs::_<xs!(0,,(#.xs))} . "abc        ->   ['();'a;"ab;"abc]
+  # @{xs::_>xs!(#.xs,,0)}   . "abc        ->   ["abc;"bc;'c;'()]
+  # [1;1;2;3;4;5;6;0;0;9]._![4;2;_=0;5]   ->   [4;2;7;5]
+  (f, q) -> for x in q then f x
+
+  # [_<5;_^2]![3;1;5;17;4]   ->   [9;1;16]
+  # [_<>'o;_+'a]!"Bonn       ->   ["Ba;"na;"na]
+  (q1, q2) ->
+    if q1 not instanceof Array or q1.length isnt 2 or not (typeof q1[0] is typeof q1[1] is 'function')
+      # []![]   ->   error 'two functions'
+      # [+;1]![]   ->   error 'two functions'
+      throw Error 'When "!" is used in the form "q1!q2", "q1" must be a sequence of two functions.'
+    [p, f] = q1
+    for x in q2 when p x then f x
+)
 
 @['%'] = -> throw Error 'Not implemented' # TODO
 
