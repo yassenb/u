@@ -215,9 +215,27 @@ eq = (x, y) ->
     for j in [0...q.length] by i then q[j...j+i]
 )
 
-@['<:'] = -> throw Error 'Not implemented' # TODO
+@['<:'] = polymorphic(
 
-@['>:'] = -> throw Error 'Not implemented' # TODO
+  # <:.$pi       ->   3
+  # <:.(-.$pi)   ->   -.4
+  (n) -> Math.floor n
+
+  # 34<:(-.5)        ->   [(-.7);(-.1)]
+  # (-.(12:10))<:1   ->   [(-.2);(8:10)]
+  (n1, n2) -> [(q = Math.floor n1 / n2), n1 - q * n2]
+)
+
+@['>:'] = polymorphic(
+
+  # >:.$pi       ->   4
+  # >:.(-.$pi)   ->   -.3
+  (n) -> Math.ceil n
+
+  # 34>:(-.5)        ->   [(-.6);4]
+  # (-.(15:10))>:1   ->   [(-.1);(-.(5:10))]
+  (n1, n2) -> [(q = Math.ceil n1 / n2), n1 - q * n2]
+)
 
 @['|:'] = -> throw Error 'Not implemented' # TODO
 
