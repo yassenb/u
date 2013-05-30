@@ -144,40 +144,24 @@ renderJS = (node) ->
       # @{a (1) :: a+2} . 3                ->   5
       # @{(1) :: 123} . 3                  ->   123
       # @{a (0) :: a+2; a ($t) :: 6} . 3   ->   6
-      # TODO enable the below two when pattern matching is implemented
-      # 5 @{[x;y]::x+y+y} 3                #->   11
-      # @{[x;y]::x+y+y} . 3                #->   $
+      # 5 @{[x;y]::x+y+y} 3                ->   11
+      # @{[x;y]::x+y+y} . 3                ->   $
       resultJS = ''
       for { clause: { functionlhs: { pattern, guard }, body } }, i in node.clauses
         # A missing pattern or guard defaults to that from the previous clause.
-        # TODO refactor this ugliness
-        pattern =
-          if pattern?
-            renderPatternJS pattern, 'arg'
-          else
-            if i > 0
-              renderPatternJS node.clauses[i - 1].pattern, 'arg'
-            else
-              'true'
+        pattern ?= node.clauses[i - 1]?.pattern
+        pattern = if pattern? then renderPatternJS pattern, 'arg' else 'true'
 
-        guard =
-          if guard?
-            renderJS guard
-          else
-            if i > 0
-              renderJS node.clauses[i - 1].guard
-            else
-              'true'
+        guard ?= node.clauses[i - 1]?.guard
+        guard = if guard? then renderJS guard else 'true'
+
         # A missing body defaults to the next clause's body.
-        # TODO what if the next clause has no body as well?
-        body =
-          if body?
-            renderJS body
-          else
-            if i < node.clauses.length - 1
-              renderJS node.clauses[i + 1].body
-            else
-              'null'
+        unless body
+          for clause in node.clauses[i+1..]
+            if clause.body?
+              body = clause.body
+              break
+        body = if body then renderJS body else 'null'
 
         resultJS += "(#{pattern}) && (#{guard}) ? (#{body}) : "
       resultJS += 'null'
@@ -213,7 +197,7 @@ renderPatternJS = (pattern, valueJS) ->
   if pattern.expr
     return renderPatternJS pattern.expr, valueJS
 
-  if pattern.length == 1
+  if pattern.length is 1
     value = pattern[0].argument
     if value is '_'
       # _==1; $   ->   $
@@ -228,17 +212,11 @@ renderPatternJS = (pattern, valueJS) ->
         # [$t;$f;$pinf;$;a]==[$t;$f;$pinf;$;[1;2;3]]; a   ->   [1;2;3]
         "#{valueJS}===(#{renderJS konst})"
     else if value.expr
-      # TODO Is this correct? Test! Also test braces in patterns
       renderPatternJS value, valueJS
-    # The rest of the value options use valueJS at least twice in the compiled code. So, unless valueJS is really
-    # simple, we wrap the code in a closure to prevent double computation.
-    # TODO move this and simplify it, invoke unconditionally on valueJS but only for sequences and complex patterns
-    else if !/^[a-z][a-z\d\.]*(\[\d+\])*$/i.test valueJS
-      """
-        (function (v) {
-          return #{renderPatternJS pattern, 'v'};
-        }(#{valueJS}))
-      """
+    # The rest of the value options use valueJS at least twice in the compiled code so we wrap the code in a closure to
+    # prevent double computation.
+    else if valueJS isnt 'v'
+      wrapInClosure pattern, valueJS
     else if seq = value.sequence?.elements
       # [x;[y;z]]==[1;[2;3]]; x+y+z   ->   6
       _(seq).reduce(
@@ -251,6 +229,10 @@ renderPatternJS = (pattern, valueJS) ->
       throw Error 'Invalid pattern, pattern can\'t be a closure'
 
   else
+    # See the note about the call to wrapInClosure above
+    unless valueJS is 'v'
+      wrapInClosure pattern, valueJS
+
     # Apply only the last operation and invoke renderPatternJS recursively.
     pattern = _(pattern)
     operator = pattern.last().operator
@@ -283,3 +265,10 @@ renderPatternJS = (pattern, valueJS) ->
         # x+y==3   ->   error 'pattern'
         # x (_/_) y == [1;2;3]   ->   error 'pattern'
         throw Error 'Invalid pattern, only \\ and / are allowed'
+
+wrapInClosure = (pattern, valueJS) ->
+  """
+    (function (v) {
+      return #{renderPatternJS pattern, 'v'};
+    }(#{valueJS}))
+  """
