@@ -278,6 +278,50 @@ coerce = (xs, ts) ->
   (f) -> throw Error '<.f is not implemented' # TODO implement as @{f::@{x\y::f.x.y}}
 )
 
+@['>'] = polymorphic(
+
+  # 12 > 3   ->   $t
+  # 1 > 23   ->   $f
+  # 1 > 1    ->   $f
+  # 1 > $f   ->   $t
+  # $t > 1   ->   $f
+  (n1, n2) -> n1 > n2
+
+  # '(12) > '3   ->   $f
+  # '() > '( )   ->   $f
+  # 'A > 'a      ->   $f
+  # 'b > 'a      ->   $t
+  (s1, s2) -> s1 > s2
+
+  # 3       > "abcdefgh      ->   "fgh
+  # (- . 3) > "abcdefgh      ->   "abcde
+  # 3 > "ab                  ->   "ab
+  # (- . 3) > "ab            ->   '()
+  # 3       > [1;2;3;4;5]    ->   [3;4;5]
+  # (- . 3) > [1;2;3;4;5]    ->   [1;2]
+  # 3 > [1;2]                ->   [1;2]
+  # (- . 3) > [1;2]          ->   []
+  (i, q) -> if i >= 0 then q[Math.max(0, q.length - i)...] else q[...Math.max(0, q.length + i)]
+
+  # - > [6;3;9;2]   ->   - . 8
+  # - > [123]       ->   123
+  # - > []          ->   $
+  # + > "abcd       ->   "abcd
+  # - > '()         ->   $
+  # [2;3;-5;1] @{[cs;x]:: @{[v;c]::v*x+c} > cs} 2   - >   19 " TODO doesn't compile
+  (f, q) ->
+    if q.length
+      r = q[0]
+      for i in [1...q.length] by 1
+        r = f [r, q[i]]
+      r
+    else
+      null
+
+  # {f.4 ++ dv == >.:; f==dv.100}   - >   25 " TODO enable test when 'parametric'-s are supported
+  (f) -> throw Error '>.f is not implemented' # TODO implement as @{f::@{x::@{y::f.(x\y)}}}
+)
+
 @['\\'] = polymorphic(
 
   # 'a\"bc   ->   "abc
