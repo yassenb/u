@@ -261,7 +261,21 @@ eq = (x, y) ->
   (f) -> throw Error '<.f is not implemented' # TODO implement as @{f::@{x\y::f.x.y}}
 )
 
-@['<='] = throw Error 'Not implemented' # TODO
+@['<='] = polymorphic(
+
+  # 12 <= 3   ->   $f
+  # 1 <= 23   ->   $t
+  # 1 <= 1    ->   $t
+  # $f <= 1   ->   $t
+  # $t <= 1   ->   $t
+  (n1, n2) -> n1 <= n2
+
+  # '(12) <= '3   ->   $t
+  # '() <= '( )   ->   $t
+  # 'A <= 'a      ->   $t
+  # 'b <= 'a      ->   $f
+  (s1, s2) -> s1 <= s2
+)
 
 @['='] = polymorphic(
 
@@ -273,15 +287,40 @@ eq = (x, y) ->
   # [1;2;3]=[1;2;3]             ->   $t
   # [1;[2;'3]]=[1;[2;'3]]       ->   $t
   # [1;2;3]=[1;'(2,3)]          ->   $f
-  # '(123)=[1;2;3]=[1;'(2,3)]   ->   $f
+  # '(123)=[1;2;3]              ->   $f
   # TODO does $t equal 1?
   # TODO how do we treat NaN-s?
   (x1, x2) -> eq x1, x2
 )
 
-@['<>'] = -> throw Error 'Not implemented' # TODO
+@['<>'] = polymorphic(
+  # $<>$                         ->   $f
+  # 1<>1                         ->   $f
+  # 1+2<>3                       ->   $f
+  # 1+2<>4                       ->   $t
+  # [1]<>1                       ->   $t
+  # [1;2;3]<>[1;2;3]             ->   $f
+  # [1;[2;'3]]<>[1;[2;'3]]       ->   $f
+  # [1;2;3]<>[1;'(2,3)]          ->   $t
+  # '(123)<>[1;2;3]              ->   $t
+  (x1, x2) -> not eq x1, x2
+)
 
-@['>='] = throw Error 'Not implemented' # TODO
+@['>='] = polymorphic(
+
+  # 12 >= 3   ->   $t
+  # 1 >= 23   ->   $f
+  # 1 >= 1    ->   $t
+  # $f >= 1   ->   $f
+  # $t >= 1   ->   $t
+  (n1, n2) -> n1 >= n2
+
+  # '(12) >= '3   ->   $f
+  # '() >= '( )   ->   $f
+  # 'A >= 'a      ->   $f
+  # 'b >= 'a      ->   $t
+  (s1, s2) -> s1 >= s2
+)
 
 @['>'] = polymorphic(
 
