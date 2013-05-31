@@ -44,8 +44,9 @@ renderJS = (node) ->
         if /^'\(/.test node
           # '(')rock''n'roll)   ->   '(')rock''n'roll)
           # '(()                ->   '(()
+          # '('))               ->   ')
           h = { n: '\n', t: '\t', ')': ')', "'": "'", '\n': '' }
-          node[2...-1].replace /'['tn\n]/g, (x) -> h[x[1]]
+          node[2...-1].replace /'[nt\)'\n]/g, (x) -> h[x[1]]
         else
           # 'a                  ->   '(a)
           # "Toledo             ->   '(Toledo)
