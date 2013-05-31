@@ -54,7 +54,7 @@ describe 'lexer', ->
         t.endCol.should.equal 6
 
       it 'throws on unrecognized token', ->
-        (-> nextTimes 1, '@').should.throw /^Syntax error: unrecognized token/
+        (-> nextTimes 1, '?').should.throw /^Syntax error: unrecognized token/
 
     it 'can rollback to a specific state', ->
       t = tokenize '1+3+5+7'

@@ -47,6 +47,7 @@ tokenDefs = [
                          | %%
                      )///]
   ['name',           /[\+\-\*:\^=<>\/\\\.\#!%~\|,&]/]
+  ['name',           /@+/]
 ]
 
 # Converts source code into a token stream with look ahead capabilities. A token has:

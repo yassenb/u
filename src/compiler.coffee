@@ -166,21 +166,32 @@ renderJS = (node) ->
         resultJS += "(#{pattern}) && (#{guard}) ? (#{body}) : "
       resultJS += 'null'
 
-      withLocal node.local, """
-        helpers.createLambda(ctx, function (arg, ctx) {
+      resultJS = """
+        helpers.createLambda(ctx, function(arg, ctx) {
             return #{resultJS};
         })
       """
+
+      if node.local
+        resultJS = """
+          helpers.withNewContext(ctx, function(ctx) {
+            ctx._function = #{resultJS};
+            #{renderJS node.local}
+            return ctx._function;
+          })
+        """
+
+      resultJS
     else
       throw Error 'Compiler error: Unrecognised node type, ' + exprType
 
 withLocal = (local, expression) ->
   if local?
     """
-      helpers.createLambda(ctx, function (_ignored, ctx) {
+      helpers.withNewContext(ctx, function(ctx) {
         #{renderJS local}
         return #{expression};
-      })()
+      })
     """
   else
     expression
@@ -188,6 +199,25 @@ withLocal = (local, expression) ->
 nameToJS = (name) ->
   if /^[a-z_\$][a-z0-9_\$]*$/i.test name
     "ctx.#{name}"
+  # @{n (n > 0) :: n\(@.(n-1));
+  # ...         :: []}.3   ->   [3;2;1]
+  # @{ $f :: @{ :: @{ :: @@@.$t }.$t}.$t;
+  # ... _ :: 5}.$f   ->   5
+  # @{  $f :: a;
+  # ... _  :: 5
+  # ... ++ a == @.$t} . $f   ->   5
+  # @{  $t :: a;
+  # ... $f :: 5
+  # ... ++ a == @{$t :: @.$f; $f :: @@.$f}.$t} . $t   ->   5
+  else if name.match /^@+$/
+    parentChain = ''
+    _(name.length - 1).times ->
+      parentChain += '._parent'
+    """
+      function(arg) {
+        return ctx#{parentChain}._function(arg, ctx);
+      }
+    """
   else
     "ctx[#{JSON.stringify name}]"
 
@@ -268,7 +298,7 @@ renderPatternJS = (pattern, valueJS) ->
 
 wrapInClosure = (pattern, valueJS) ->
   """
-    (function (v) {
+    (function(v) {
       return #{renderPatternJS pattern, 'v'};
     }(#{valueJS}))
   """
