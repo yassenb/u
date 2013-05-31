@@ -138,6 +138,7 @@ renderJS = (node) ->
       # @{a :: a+2} . 3                    ->   5
       # x==5; @{:: x} . $                  ->   5
       # x==5; f==@{:: x}; x==6; f . x      ->   6
+      # TODO the above test is wrong---a name cannot be associated with multiple values
       # TODO test that creating a new function creates a new context
       # @{1 :: 2} . 1                      ->   2
       # @{1 :: 2} . 3                      ->   $
