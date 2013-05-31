@@ -9,7 +9,7 @@ helpers = require './helpers'
     var ctx     = arguments[0],
         helpers = arguments[1];
     return #{compile uCode};
-  """) stdlib, helpers
+  """) Object.create(stdlib), helpers
 
 @compile = compile = (uCode) ->
   renderJS parse uCode
