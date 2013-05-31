@@ -169,14 +169,14 @@ renderJS = (node) ->
       resultJS += 'null'
 
       resultJS = """
-        helpers.createLambda(ctx, function(arg, ctx) {
+        helpers.createLambda(ctx, function (arg, ctx) {
             return #{resultJS};
         })
       """
 
       if node.local
         resultJS = """
-          helpers.withNewContext(ctx, function(ctx) {
+          helpers.withNewContext(ctx, function (ctx) {
             ctx._function = #{resultJS};
             #{renderJS node.local}
             return ctx._function;
@@ -190,7 +190,7 @@ renderJS = (node) ->
 withLocal = (local, expression) ->
   if local?
     """
-      helpers.withNewContext(ctx, function(ctx) {
+      helpers.withNewContext(ctx, function (ctx) {
         #{renderJS local}
         return #{expression};
       })
@@ -216,7 +216,7 @@ nameToJS = (name) ->
     _(name.length - 1).times ->
       parentChain += '._parent'
     """
-      function(arg) {
+      function (arg) {
         return ctx#{parentChain}._function(arg, ctx);
       }
     """
@@ -300,7 +300,7 @@ renderPatternJS = (pattern, valueJS) ->
 
 wrapInClosure = (pattern, valueJS) ->
   """
-    (function(v) {
+    (function (v) {
       return #{renderPatternJS pattern, 'v'};
     }(#{valueJS}))
   """
