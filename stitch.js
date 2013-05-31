@@ -7,7 +7,7 @@
   stitch = require('stitch');
 
   stitch.createPackage({
-    paths: ['compiled/src']
+    paths: ['to-stitch']
   }).compile(function(err, jsCode) {
     if (err) {
       throw err;

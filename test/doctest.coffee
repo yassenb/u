@@ -13,7 +13,7 @@ forEachDoctest = (handler, continuation) ->
         while i < lines.length and (m = lines[i].match(/^ *# *\.\.\.(.*)$/))
           line += '\n' + m[1]
           i++
-        if m = line.match /^ *#(.*) -> (.+)$/
+        if m = line.match /^ *#([^]*) -> ([^]+)$/
           handler code: trim(m[1]), expectation: trim(m[2])
     continuation?()
 
@@ -79,11 +79,13 @@ runDoctests = (continuation) ->
         lastTestTimestamp = Date.now()
 
     -> # continuation after forEachDoctest
-      console.info(
-        (if nFailed then "#{nFailed} out of #{nTests} tests failed"
-        else "All #{nTests} tests passed") +
-        " in #{Date.now() - t0} ms."
-      )
+      if nFailed
+        console.error "#{nFailed} out of #{nTests} tests failed"
+      else
+        console.info "All #{nTests} tests passed"
+      console.info " in #{Date.now() - t0} ms."
+      process.exit 1 if nFailed
+
       continuation?()
   )
 

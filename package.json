@@ -5,6 +5,7 @@
     "coffee-script": "",
     "glob": "",
     "stitch": "git+https://github.com/ngn/stitch",
+    "optimist": "",
 
     "mocha": "",
     "should": "",

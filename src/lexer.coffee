@@ -1,3 +1,5 @@
+_ = require '../lib/underscore'
+
 # The lexer transforms source code into a stream of tokens.
 #
 # It does so by trying to match regular expressions at the current source
@@ -9,68 +11,92 @@
 #
 #   * '' means that the token's type should be the same as its value
 tokenDefs = [
-  ['-',         /^\s+/]          # whitespace
-  ['-',         /^"[^a-z\{].*/i] # line comment
-  ['-',         ///^             # block comment
-                  "\{.*
-                  (?: \s* (?: " | "[^\}].* | [^"].* ) [\n\r]+ )*
-                  "\}.*
-                ///]
-  ['number',    /^\d+/]          # todo: floating point numbers
-  ['',          ///^(?:
-                      ==
-                    | \?\{
-                    | @\{
-                    | ::
-                    | \+\+
-                    | [\(\)\[\]\{\};_]
-                )///]
-  ['name',      /^[a-z][a-z0-9]*/i]
-  ['name',      /^\$(f|t|pinf|ninf|e|pi|np)?/]
-  ['name',      ///^(?:
-                      <:
-                    | >:
-                    | \|:
-                    | =>
-                    | \|\|
-                    | <=
-                    | >=
-                    | <>
-                    | ,,
-                    | >>
-                    | <<
-                    | %%
-                )///]
-  ['name',      /^[\+\-\*:\^=<>\/\\\.\#!%~\|,&]/]
+  ['-',              /\s+/]          # whitespace
+  ['-',              /"[^a-z\{].*/i] # line comment
+  ['-',              ///             # block comment
+                       "\{.*
+                       (?: \s* (?: " | "[^\}].* | [^"].* ) [\n\r]+ )*
+                       "\}.*         # TODO block comments can be nested
+                     ///]
+  ['number',         /\d+/]          # TODO floating point numbers
+  ['string',         /'\(('[^]|[^'\)])*\)/]
+  ['string',         /'[^\(]/]
+  ['string',         /"[a-z][a-z0-9]*/i]
+  ['',               ///(?:
+                           ==
+                         | \?\{
+                         | @\{
+                         | ::
+                         | \+\+
+                         | [\(\)\[\]\{\};_]
+                     )///]
+  ['dollarConstant', /\$[a-z]*/i]
+  ['name',           /[a-z][a-z0-9]*/i]
+  ['name',           ///(?:
+                           <:
+                         | >:
+                         | \|:
+                         | =>
+                         | \|\|
+                         | <=
+                         | >=
+                         | <>
+                         | ,,
+                         | >>
+                         | <<
+                         | %%
+                     )///]
+  ['name',           /[\+\-\*:\^=<>\/\\\.\#!%~\|,&]/]
+  ['name',           /@+/]
 ]
 
-# `line' and `col' point to where we are in the source code.
-# A sentry 'eof' token is generated at the end.
+# Converts source code into a token stream with look ahead capabilities. A token has:
+#   type - string, number, etc.,
+#   value - the piece of source code the token represents
+#   startLine, startCol, endLine, endCol - the position of the token in the source file
 @tokenize = (code, opts = {}) ->
-  line = col = 1
+  position = { line: 1, col: 1, code: code }
+
+  # get the next token
   next: ->
     loop
-      if not code then return {
-        type: 'eof', value: '',
-        startLine: line, startCol: col, endLine: line, endCol: col
-      }
-      startLine = line
-      startCol = col
+      if position.code is ''
+        return {
+          type: 'eof', value: '',
+          startLine: position.line, startCol: position.col, endLine: position.line, endCol: position.col
+        }
+
+      startLine = position.line
+      startCol = position.col
+
       type = null
-      for [t, re] in tokenDefs when m = code.match re
-        type = t or m[0]
-        break
+      for [t, re] in tokenDefs
+        re = new RegExp '^' + re.source, if re.ignoreCase then "i"
+        if match = position.code.match re
+          type = t or match[0]
+          break
       if not type
-        throw Error "Syntax error: unrecognized token at #{line}:#{col} " + code,
+        throw Error "Syntax error: unrecognized token at #{position.line}:#{position.col} " + position.code,
           file: opts.file
-          line: line
-          col: col
+          line: position.line
+          col: position.col
           code: opts.code
-      a = m[0].split '\n'
-      line += a.length - 1
-      col = (if a.length is 1 then col else 1) + a[a.length - 1].length
-      code = code.substring m[0].length
-      if type isnt '-' then return {
-        type, value: m[0],
-        startLine, startCol, endLine: line, endCol: col
-      }
+
+      match = match[0]
+      lines = match.split '\n'
+      position.line += lines.length - 1
+      position.col = (if lines.length is 1 then position.col else 1) + _(lines).last().length
+      position.code = position.code.substr match.length
+      if type isnt '-'
+        return {
+          type, value: match,
+          startLine, startCol, endLine: position.line, endCol: position.col - 1
+        }
+
+  # returns the stream to the state of the call to `getPosition()' by which `pos' was obtained
+  rollback: (pos) ->
+    position = _(pos).clone()
+
+  # returns a position - something you can pass to `rollback(pos)' to restore to that position in the stream
+  getPosition: ->
+    _(position).clone()
