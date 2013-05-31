@@ -154,25 +154,33 @@ renderJS = (node) ->
       resultJS = ''
       for { clause: { functionlhs: { pattern, guard }, body } }, i in node.clauses
         # A missing pattern or guard defaults to that from the previous clause.
-        pattern ?= node.clauses[i - 1]?.pattern
-        pattern = if pattern? then renderPatternJS pattern, 'arg' else 'true'
-
-        guard ?= node.clauses[i - 1]?.guard
-        guard = if guard? then renderJS guard else 'true'
+        # @{x (x>5) :: 1;
+        # ... (x>4) :: 2;
+        # ... (x>3) :: 3} . 4   ->   3
+        # @{x (x>5) :: 1;
+        # ...       :: 1;
+        # ...       :: 1;
+        # ... ($t)  :: 2} . 4   ->   2
+        # @{  _ :: ;
+        # ...   :: ;
+        # ...   :: 1;
+        # ...   :: 2} . 4   ->   1
+        resultingPattern = pattern || resultingPattern || node.clauses[i - 1]?.clause.functionlhs.pattern
+        resultingGuard = guard || resultingGuard || node.clauses[i - 1]?.clause.functionlhs.guard
 
         # A missing body defaults to the next clause's body.
-        unless body
+        unless resultingBody = body || resultingBody
           for clause in node.clauses[i+1..]
-            if clause.body?
-              body = clause.body
+            if body = clause.clause.body
+              resultingBody = body
               break
-        body = if body then renderJS body else 'null'
 
         resultJS += """
           helpers.withNewContext(ctx, function (ctx) {
-              var enter = (#{pattern}) && (#{guard});
+              var enter = (#{if resultingPattern? then renderPatternJS resultingPattern, 'arg' else 'true'}) &&
+                          (#{if resultingGuard? then renderJS resultingGuard else 'true'});
               if (enter) {
-                  body = (#{body});
+                  body = (#{if resultingBody? then renderJS resultingBody else 'null'});
               }
               return enter;
           }) ||
@@ -215,7 +223,7 @@ nameToJS = (name) ->
   if /^[a-z_\$][a-z0-9_\$]*$/i.test name
     "ctx.#{name}"
   # @{n (n > 0) :: n\(@.(n-1));
-  # ...         :: []}.3   ->   [3;2;1]
+  # ...    ($t) :: []}.3   ->   [3;2;1]
   # @{ $f :: @{ :: @{ :: @@@.$t }.$t}.$t;
   # ... _ :: 5}.$f   ->   5
   # @{  $f :: a;
