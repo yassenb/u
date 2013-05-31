@@ -148,6 +148,9 @@ renderJS = (node) ->
       # @{a (0) :: a+2; a ($t) :: 6} . 3   ->   6
       # 5 @{[x;y]::x+y+y} 3                ->   11
       # @{[x;y]::x+y+y} . 3                ->   $
+      #
+      # each clause should be evaluated in its own context
+      # x == 6; @{x (x > 5) :: 5; _ ($t) :: x} . 3   ->   6
       resultJS = ''
       for { clause: { functionlhs: { pattern, guard }, body } }, i in node.clauses
         # A missing pattern or guard defaults to that from the previous clause.
@@ -165,12 +168,22 @@ renderJS = (node) ->
               break
         body = if body then renderJS body else 'null'
 
-        resultJS += "(#{pattern}) && (#{guard}) ? (#{body}) : "
+        resultJS += """
+          helpers.withNewContext(ctx, function (ctx) {
+              var enter = (#{pattern}) && (#{guard});
+              if (enter) {
+                  body = (#{body});
+              }
+              return enter;
+          }) ||
+        """
       resultJS += 'null'
 
       resultJS = """
         helpers.createLambda(ctx, function (arg, ctx) {
-            return #{resultJS};
+            var body = null;
+            #{resultJS};
+            return body;
         })
       """
 
