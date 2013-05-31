@@ -272,6 +272,7 @@ renderPatternJS = (pattern, valueJS) ->
       wrapInClosure pattern, valueJS
     else if seq = value.sequence?.elements
       # [x;[y;z]]==[1;[2;3]]; x+y+z   ->   6
+      # @{[] :: $t; _ :: $f} . []     ->   $t
       _(seq).reduce(
         (r, elem, i) ->
           r + " && (#{renderPatternJS elem, "#{valueJS}[#{i}]"})"
