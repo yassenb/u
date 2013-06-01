@@ -41,8 +41,8 @@ polymorphic = (fs...) ->
 coerce = (a, ts) ->
   if ts.length is 2
     if a instanceof Array and a.length is 2 and
-            (x = coerce a[0], [ts[0]]) and
-            (y = coerce a[1], [ts[1]])
+            (x = coerce a[0], ts[0]) and
+            (y = coerce a[1], ts[1])
       x.concat y
   else if ts.length is 1
     switch ts
