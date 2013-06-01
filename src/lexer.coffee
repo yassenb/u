@@ -13,6 +13,7 @@ _ = require '../lib/underscore'
 tokenDefs = [
   ['-',              /\s+/]          # whitespace
   ['-',              /"[^a-z\{].*/i] # line comment
+  ['-',              /^#!.*/i]       # line comment
   ['-',              ///             # block comment
                        "\{.*
                        (?: \s* (?: " | "[^\}].* | [^"].* ) [\n\r]+ )*
