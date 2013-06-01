@@ -24,8 +24,8 @@ _ = require '../lib/underscore'
 polymorphic = (fs...) ->
   signatures =
     for f in fs
-      for t in ('' + f).replace(/^\s*function\s*\(([^\)]*)\)[^]+$/, '$1').split /\s*,\s*/
-        t[0]
+      paramNames = ('' + f).replace(/^\s*function\s*\(([^\)]*)\)[^]+$/, '$1').split /\s*,\s*/
+      (for t in paramNames then t[0]).join ''
   (a) ->
     for f, i in fs when (xs = coerce a, signatures[i]) then return f xs...
     throw Error """
@@ -45,7 +45,7 @@ coerce = (a, ts) ->
             (y = coerce a[1], [ts[1]])
       x.concat y
   else if ts.length is 1
-    switch ts[0]
+    switch ts
       when 'n' then if typeof a in ['number', 'boolean'] then [+a]
       when 'i' then if typeof a in ['number', 'boolean'] and +a is ~~a then [+a]
       when 'b' then if typeof a is 'boolean' then [a]
@@ -54,7 +54,7 @@ coerce = (a, ts) ->
       when 'p' then undefined # TODO pictures
       when 'f' then if typeof a is 'function' then [a]
       when 'x' then [a]
-      else throw Error 'Bad type symbol, ' + JSON.stringify ts[0]
+      else throw Error 'Bad type symbol, ' + JSON.stringify ts
   else
     throw Error 'Bad type signature, ' + JSON.stringify ts
 
