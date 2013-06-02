@@ -773,6 +773,21 @@ eq = (x, y) ->
   (n1, n2) -> n1 * (n2 / gcd [n1, n2])
 )
 
+@diag = polymorphic(
+  # 3 diag 4            ->   5
+  # 12 diag (-.5)       ->   13
+  # diag.([2]*10+[3])   ->   7
+  # diag.[$pi]          ->   $pi
+  (q) ->
+    r = 0
+    for x in q
+      if typeof x isnt 'number'
+        # diag.[123;'(456)]   ->   error 'numbers'
+        throw Error 'diag\'s argument must consist of numbers.'
+      r += x * x
+    Math.sqrt r
+)
+
 # ===== Input/output functions =====
 
 isNodeJS = not window?
