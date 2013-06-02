@@ -788,6 +788,25 @@ eq = (x, y) ->
     Math.sqrt r
 )
 
+# Trigonometric functions
+# TODO add tests when we have floating point numbers
+@sin  = polymorphic (n) -> Math.sin  n
+@cos  = polymorphic (n) -> Math.cos  n
+@tan  = polymorphic (n) -> Math.tan  n
+@asin = polymorphic (n) -> Math.asin n
+@acos = polymorphic (n) -> Math.acos n
+@atan = polymorphic (n1, n2) -> Math.atan2 n1, n2
+
+@log = polymorphic(
+
+  # 2 log 256             ->   8
+  # 81 log 3              ->   1:4
+  # $pi log (1:($pi^2))   ->   -.2
+  # 1 log 0               ->   $ninf
+  # TODO check for NaN
+  (n1, n2) -> Math.log(n2) / Math.log(n1)
+)
+
 # ===== Input/output functions =====
 
 isNodeJS = not window?
