@@ -782,5 +782,52 @@ writeHelper = (filename, data, flag) ->
   (x, q) -> writeHelper x, q, 'a'
 )
 
+@readf = polymorphic(
+  (s, q) ->
+    content =
+      if s
+        # TODO return $ on failure
+        if isNodeJS
+          require('fs').readFileSync s
+        else
+          localStorage.getItem s
+      else
+        if isNodeJS
+          throw Error 'Cannot read synchronously from stdin in NodeJS'
+        else
+          prompt 'Input:'
+    if content?
+      reads [content, q]
+    else
+      null
+)
+
+@reads = reads = polymorphic(
+  # '(123 456 789)   reads ["num;"str;"num]   ->   [123;'(456);789;'()]
+  # '(1't2)          reads ["num;"num]        ->   [1;2;'()]
+  # '( 't 1't 't2't) reads ["num;"num]        ->   [1;2;'('t)]
+  # '(1't2)          reads ["num]             ->   [1;'('t2)]
+  # '(1'n2)          reads ["num;"num]        ->   [1;'()]
+  # '(a b)           reads ["str]             ->   ['a;'( b)]
+  # '(a b)           reads ["num]             ->   $
+  # '(a b)           reads []                 ->   ['(a b)]
+  (s, q) ->
+    s = s.replace /^(.*)[^]*$/, '$1' # cut `s` off at the first newline
+    r = []
+    for t in q
+      if not (m = s.match /^[ \t]*([^ \t]+)(.*)$/) then break
+      [_ignore, item, s] = m
+      if t is 'str'
+        r.push item
+      else if t is 'num'
+        # TODO negative and floating-point numbers
+        if not /^\d+$/.test item then return null
+        r.push parseInt item, 10
+      else
+        throw Error "Invalid type, #{JSON.stringify t}.  Only \"num\" and \"str\" are allowed."
+    r.push s
+    r
+)
+
 # Remember each built-in function's name in case we need it for debugging purposes
 for k, v of @ when typeof v is 'function' then v.uName = k
