@@ -101,4 +101,4 @@ class @Peg
       else
         false
     else
-      throw 'Unknown expression type'
+      throw Error 'Unknown expression type'
