@@ -45,6 +45,9 @@ renderJS = (node) ->
           # '(')rock''n'roll)   ->   '(')rock''n'roll)
           # '(()                ->   '(()
           # '('))               ->   ')
+          # #.'('n't')'')       ->   4
+          # '(abc'
+          # ...def)             ->   "abcdef
           h = { n: '\n', t: '\t', ')': ')', "'": "'", '\n': '' }
           node[2...-1].replace /'[nt\)'\n]/g, (x) -> h[x[1]]
         else
