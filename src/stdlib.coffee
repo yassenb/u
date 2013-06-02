@@ -739,5 +739,48 @@ eq = (x, y) ->
   (f1, f2) -> (a) -> f1 f2 a
 )
 
+# Input/output functions
+
+isNodeJS = not window?
+
+fmt = (x) ->
+  if x instanceof Array then _(x).map(fmt).join ' '
+  else if x is null then '$'
+  else if typeof x is 'boolean' then '$' + 'ft'[+x]
+  else '' + x
+
+# writeHelper(...)
+# flag can be 'w' for write (the default) or 'a' for append
+writeHelper = (filename, data, flag) ->
+  content = fmt data
+  if filename is ''
+    if isNodeJS
+      process.stdout.write content
+    else
+      alert content
+  else if typeof filename is 'string'
+    # TODO return $ on failure
+    if isNodeJS
+      require('fs').writeFileSync filename, content, {flag}
+    else
+      localStorage.setItem filename,
+        if flag is 'a' then (localStorage.getItem(filename) or '') + content
+        else content
+  else if filename isnt null
+    throw Error 'First argument to "write" or "writa" must be a string or $'
+  content
+
+@write = polymorphic(
+  # $ write "abc             ->   "abc
+  # $ write ["abc]           ->   "abc
+  # $ write [1;2;3;"abc]     ->   '(1 2 3 abc)
+  # $ write [1;[2;3];"abc]   ->   '(1 2 3 abc)
+  (x, q) -> writeHelper x, q
+)
+
+@writa = polymorphic(
+  (x, q) -> writeHelper x, q, 'a'
+)
+
 # Remember each built-in function's name in case we need it for debugging purposes
 for k, v of @ when typeof v is 'function' then v.uName = k
