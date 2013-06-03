@@ -897,6 +897,35 @@ eq = (x, y) ->
     [q[...i], q[i...]]
 )
 
+@update = polymorphic(
+  (q1, q2) ->
+    if typeof q2 is 'string'
+      # TODO What do we do in this case?
+      throw Error 'Second argument to "update" cannot be a string.'
+    if q1.length is 2 and q1[0] is ~~q1[0] and typeof q1[1] is 'function'
+      # [1;_^2] update [1;2;3]     ->   [1;4;3]
+      # [-.1;_^2] update [1;2;3]   ->   [1;2;9]
+      # [3;_^2] update [1;2;3]     ->   $
+      [i, f] = q1
+      if i < 0 then i += q2.length
+      if 0 <= i < q2.length
+        q2[...i].concat [f q2[i]], q2[i + 1...]
+      else
+        null
+    else if q1.length is 3 and typeof q1[0] is typeof q1[1] is 'function'
+      # [_>3;_^2;99] update [1;2;3;4;5]   ->   [1;2;3;16;5]
+      # [_>7;_^2;99] update [1;2;3;4;5]   ->   [1;2;3;4;5;99]
+      [p, f, u] = q1
+      r = null
+      for x, i in q2 when p x
+        r = q2[...i].concat [f x], q2[i + 1...]
+        break
+      r or q2.concat [u]
+    else
+      # [1;2] update [3;4]   ->   error 'Invalid first argument'
+      throw Error 'Invalid first argument to "update"'
+)
+
 # ===== Input/output functions =====
 
 isNodeJS = not window?
