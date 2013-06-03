@@ -982,6 +982,15 @@ eq = (x, y) ->
       throw Error 'Invalid first argument to "after"'
 )
 
+@count = polymorphic(
+  # _>3 count [4;1;3;5;1]     ->   2
+  # _='s count "mississippi   ->   4
+  (f, q) ->
+    r = 0
+    for x in q when f x then r++
+    r
+)
+
 # ===== Input/output functions =====
 
 isNodeJS = not window?
