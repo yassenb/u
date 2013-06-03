@@ -807,6 +807,96 @@ eq = (x, y) ->
   (n1, n2) -> Math.log(n2) / Math.log(n1)
 )
 
+# TODO random n1 n2
+
+# ===== Functions for sequences =====
+
+# empty(...)
+# empty.[]     ->   $t
+# empty.'()    ->   $t
+# empty.[1]    ->   $f
+# empty.'a     ->   $f
+# empty.0      ->   $f
+# empty.[[]]   ->   $f
+# empty.$f     ->   $f
+# empty.$      ->   $f
+@empty = (x) -> (x instanceof Array or typeof x is 'string') and x.length is 0
+
+@fst = polymorphic(
+  # fst.[1;2]   ->   1
+  # fst."ab     ->   'a
+  # TODO Should we return $ for an empty list/sequence?
+  (q) -> if q.length then q[0] else null
+)
+
+@bst = polymorphic(
+  # bst.[1;2]   ->   2
+  # bst."ab     ->   'b
+  # TODO Should we return $ for an empty list/sequence?
+  (q) -> if q.length then q[q.length - 1] else null
+)
+
+@butf = polymorphic(
+  # butf.[1;2;3]   ->   [2;3]
+  # butf."abc      ->   "bc
+  # butf.[1]       ->   []
+  # butf.'a        ->   '()
+  # butf.[]        ->   []
+  # butf.'()       ->   '()
+  (q) -> q[1...]
+)
+
+@butb = polymorphic(
+  # butb.[1;2;3]   ->   [1;2]
+  # butb."abc      ->   "ab
+  # butb.[1]       ->   []
+  # butb.'a        ->   '()
+  # butb.[]        ->   []
+  # butb.'()       ->   '()
+  (q) -> q[...-1]
+)
+
+@rol = polymorphic(
+  # rol.[1;2;3]   ->   [2;3;1]
+  # rol."abc      ->   "bca
+  # rol.[1]       ->   [1]
+  # rol.'a        ->   'a
+  # rol.[]        ->   []
+  # rol.'()       ->   '()
+  (q) -> q[1...].concat q[...1]
+)
+
+@ror = polymorphic(
+  # ror.[1;2;3]   ->   [3;1;2]
+  # ror."abc      ->   "cab
+  # ror.[1]       ->   [1]
+  # ror.'a        ->   'a
+  # ror.[]        ->   []
+  # ror.'()       ->   '()
+  (q) -> q[-1...].concat q[...-1]
+)
+
+@cut = polymorphic(
+
+  # 2 cut "abcde    ->   ["ab;"cde]
+  # 0 cut [1;2;3]   ->   [[];[1;2;3]]
+  # 3 cut [1;2;3]   ->   [[1;2;3];[]]
+  # 0 cut '()       ->   ['();'()]
+  # -.2 cut "abc    ->   ['a;"bc]
+  # -.3 cut "abc    ->   ['();"abc]
+  # TODO What to do with index out of bounds?
+  (i, q) -> [q[...i], q[i...]]
+
+  # _<3 cut [2;1;5;8;2;4]   ->   [[2;1];[5;8;2;4]]
+  # _='a cut "abc           ->   ['a;"bc]
+  # _='x cut "abc           ->   ['();"abc]
+  # _<>'x cut "abc          ->   ["abc;'()]
+  (f, q) ->
+    i = 0
+    while i < q.length and f q[i] then i++
+    [q[...i], q[i...]]
+)
+
 # ===== Input/output functions =====
 
 isNodeJS = not window?
