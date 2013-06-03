@@ -137,6 +137,12 @@ renderJS = (node) ->
     when 'closure'
       renderJS node
 
+    when 'parametric'
+      # {a + b ++ a == 6; b == 5}   ->   11
+      # TODO it's better if all .pick()-s are removed and the things they pick - named to avoid reconstructing parts of
+      # the AST in the compiler
+      withLocal node.local, renderJS _(node).pick('expr')
+
     when 'conditional'
       # ?{1::2;3}   ->   2
       # ?{0::2;3}   ->   3
