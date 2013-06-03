@@ -18,3 +18,11 @@
 @curryLeft  = (f, x) ->
   (y, ctx) ->
     f [x, y], ctx
+
+@assignmentsWithLocal = (ctx, f, namesToExport) ->
+  newCtx = Object.create ctx
+  f newCtx
+  for name, value of newCtx
+    if namesToExport.indexOf(name) isnt -1
+      ctx[name] = newCtx[name]
+  null

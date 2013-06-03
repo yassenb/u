@@ -109,11 +109,27 @@ renderJS = (node) ->
       )
 
     when 'def'
+      if node.assignment
+        renderJS node
+      # {a == b ++ b == 6}; a   ->   6
+      # b == 7; {a == b ++ b == 6}; [a;b]   ->   [6;7]
+      # {_\(x\(y\(z\[[z1;z2]]))) == a ++ a == [0;1;2;3;[4;5]]}; [x;y;z;z1;z2]   ->   [1;2;3;4;5]
+      else
+        assignments = node.assignments
+        namesToExport = assignmentNames assignments
+        """
+          helpers.assignmentsWithLocal(ctx,
+            function (ctx) {
+              #{renderJS node.local};
+              #{_(assignments).map(renderJS).join ';\n'};
+            },
+            [#{_(namesToExport).map(JSON.stringify).join(',')}])
+        """
+
+    when 'assignment'
       # a==1; a             ->   1
       # a==2+1; a           ->   3
-      # TODO multiple assignments with a local clause
-      if assignment = node.assignment
-        renderPatternJS assignment.pattern, renderJS _(assignment).pick('expr')
+      renderPatternJS node.pattern, renderJS _(node).pick('expr')
 
     when 'defs'
       _(node).map(renderJS).join ';\n'
@@ -168,11 +184,11 @@ renderJS = (node) ->
         # ...   :: ;
         # ...   :: 1;
         # ...   :: 2} . 4   ->   1
-        resultingPattern = pattern || resultingPattern || node.clauses[i - 1]?.clause.functionlhs.pattern
-        resultingGuard = guard || resultingGuard || node.clauses[i - 1]?.clause.functionlhs.guard
+        resultingPattern = pattern or resultingPattern or node.clauses[i - 1]?.clause.functionlhs.pattern
+        resultingGuard = guard or resultingGuard or node.clauses[i - 1]?.clause.functionlhs.guard
 
         # A missing body defaults to the next clause's body.
-        unless resultingBody = body || resultingBody
+        unless resultingBody = body or resultingBody
           for clause in node.clauses[i+1..]
             if body = clause.clause.body
               resultingBody = body
@@ -202,7 +218,7 @@ renderJS = (node) ->
         resultJS = """
           helpers.withNewContext(ctx, function (ctx) {
             ctx._function = #{resultJS};
-            #{renderJS node.local}
+            #{renderJS node.local};
             return ctx._function;
           })
         """
@@ -215,7 +231,7 @@ withLocal = (local, expression) ->
   if local?
     """
       helpers.withNewContext(ctx, function (ctx) {
-        #{renderJS local}
+        #{renderJS local};
         return #{expression};
       })
     """
@@ -329,3 +345,20 @@ wrapInClosure = (pattern, valueJS) ->
       return #{renderPatternJS pattern, 'v'};
     }(#{valueJS}))
   """
+
+# TODO unit test
+assignmentNames = (assignments) ->
+  walkExpr = (expr) ->
+    _(expr).map (subExpr) ->
+      arg = subExpr.argument
+      if name = arg.const?.name
+        name
+      else if arg.sequence?
+        _(arg.sequence.elements).map (e) ->
+          walkExpr e.expr
+      else if arg.expr?
+        walkExpr arg.expr
+
+  exprs = _(assignments).map (assignment) ->
+    assignment.assignment.pattern.expr
+  _(_(exprs).map(walkExpr)).flatten()
