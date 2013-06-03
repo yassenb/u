@@ -36,8 +36,12 @@ renderJS = (node) ->
       renderJS node
 
     when 'number'
-      # 5   ->   5
-      node
+      # 5           ->   5
+      # ~5          ->   0 - 5
+      # 0-5         ->   ~5
+      # 0.1         ->   0.1
+      # 0.1 + 0.9   ->   1
+      node.replace /^~/, '-'
 
     when 'string'
       JSON.stringify(

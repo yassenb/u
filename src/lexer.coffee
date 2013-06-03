@@ -19,7 +19,7 @@ tokenDefs = [
                        (?: \s* (?: " | "[^\}].* | [^"].* ) [\n\r]+ )*
                        "\}.*         # TODO block comments can be nested
                      ///]
-  ['number',         /\d+/]          # TODO floating point numbers
+  ['number',         /~?\d+(?:\.\d+)?/]
   ['string',         /'\(('[^]|[^'\)])*\)/]
   ['string',         /'[^\(]/]
   ['string',         /"[a-z][a-z0-9]*/i]
