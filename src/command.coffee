@@ -30,6 +30,6 @@ optimist = require 'optimist'
   uStream.setEncoding 'utf8'
   uStream.on 'data', (s) -> uCode += s
   uStream.on 'end', ->
-    console.info exec uCode
+    exec uCode
 
   return
