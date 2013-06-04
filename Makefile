@@ -24,9 +24,9 @@ test_compiled := $(call get_compiled, $(test_sources))
 lib := $(shell find lib -iname '*.js')
 lib_compiled := $(call get_in_dist_dir, $(lib))
 
-all: dist
+all: dist test
 
-dist: test
+dist: build
 	@echo "(target) generating distribution"
 	@mkdir -p to-stitch
 	@cp -r $(compiled_dir)/src $(compiled_dir)/lib to-stitch
