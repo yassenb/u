@@ -96,8 +96,12 @@ tokenDefs = [
 
   # returns the stream to the state of the call to `getPosition()' by which `pos' was obtained
   rollback: (pos) ->
-    position = _(pos).clone()
+    position.line = pos.line
+    position.col  = pos.col
+    position.code = pos.code
 
   # returns a position - something you can pass to `rollback(pos)' to restore to that position in the stream
   getPosition: ->
-    _(position).clone()
+    line: position.line
+    col:  position.col
+    code: position.code
