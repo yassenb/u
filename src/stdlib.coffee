@@ -94,13 +94,13 @@ eq = (x, y) ->
 
 @['-'] = polymorphic(
 
-  # -.$t   ->   - . 1
+  # -.$t   ->   ~1
   # -.'a   ->   error 'Unsupported'
   (n) -> -n
 
-  # 2 - 3     ->   - . 1
-  # 2 - 3     ->   - . 1
-  # $f - $t   ->   - . 1
+  # 2 - 3     ->   ~1
+  # 2 - 3     ->   ~1
+  # $f - $t   ->   ~1
   # 3 - $t    ->   2
   (n1, n2) -> n1 - n2
 
@@ -131,7 +131,7 @@ eq = (x, y) ->
 @['*'] = polymorphic(
 
   # * . 123         ->   1
-  # * . (- . 123)   ->   - . 1
+  # * . ~123        ->   ~1
   # * . 0           ->   0
   # * . $t          ->   1
   # * . $f          ->   0
@@ -147,7 +147,7 @@ eq = (x, y) ->
   # "abc*0          ->   '()
   # TODO should we allow i*q as well?
   # [2;5]*$pi       ->   error 'Unsupported'
-  # [2;5]*(- . 1)   ->   error 'non-negative'
+  # [2;5]*~1        ->   error 'non-negative'
   # 'a*$pinf        ->   error 'Unsupported'
   (q, i) ->
     if i < 0
@@ -162,10 +162,10 @@ eq = (x, y) ->
 
 @['^'] = polymorphic(
 
-  # 2^3               ->   8
-  # 3^2               ->   9
-  # (- . 1)^2         ->   1
-  # (- . 1)^(- . 1)   ->   - . 1
+  # 2^3     ->   8
+  # 3^2     ->   9
+  # ~1^2    ->   1
+  # ~1^~1   ->   ~1
   (n1, n2) -> Math.pow n1, n2
 
   # (_+[1;2]^3).[777]     ->   [777;1;2;1;2;1;2]
@@ -193,7 +193,7 @@ eq = (x, y) ->
   # [1;2;3;4]:4       ->   [[1];[2];[3];[4]]
   # [1;2;3;4]:5       ->   [[1];[2];[3];[4];[]]
   # []:3              ->   [[];[];[]]
-  # [1;2;3]:(- . 1)   ->   error 'must be positive'
+  # [1;2;3]:~1        ->   error 'must be positive'
   (q, i) ->
     if i <= 0 then throw Error 'Sequence denominator must be positive.'
     r = q.length % i
@@ -209,7 +209,7 @@ eq = (x, y) ->
   # 4:[1;2;3;4]       ->   [[1;2;3;4]]
   # 5:[1;2;3;4]       ->   [[1;2;3;4]]
   # 3:[]              ->   []
-  # (- . 1):[1;2;3]   ->   error 'must be positive'
+  # ~1:[1;2;3]        ->   error 'must be positive'
   (i, q) ->
     if i <= 0 then throw Error 'Sequence numerator must be positive.'
     for j in [0...q.length] by i then q[j...j+i]
@@ -218,34 +218,34 @@ eq = (x, y) ->
 @['<:'] = polymorphic(
 
   # <:.$pi       ->   3
-  # <:.(-.$pi)   ->   -.4
+  # <:.(-.$pi)   ->   ~4
   (n) -> Math.floor n
 
-  # 34<:(-.5)        ->   [(-.7);(-.1)]
-  # (-.(12:10))<:1   ->   [(-.2);(8:10)]
+  # 34<:~5    ->   [~7;~1]
+  # ~1.2<:1   ->   [~2;0.8]
   (n1, n2) -> [(q = Math.floor n1 / n2), n1 - q * n2]
 )
 
 @['>:'] = polymorphic(
 
   # >:.$pi       ->   4
-  # >:.(-.$pi)   ->   -.3
+  # >:.(-.$pi)   ->   ~3
   (n) -> Math.ceil n
 
-  # 34>:(-.5)        ->   [(-.6);4]
-  # (-.(15:10))>:1   ->   [(-.1);(-.(5:10))]
+  # 34>:~5    ->   [~6;4]
+  # ~1.5>:1   ->   [~1;~0.5]
   (n1, n2) -> [(q = Math.ceil n1 / n2), n1 - q * n2]
 )
 
 @['|:'] = polymorphic(
 
   # |:.$pi       ->   3
-  # |:.(-.$pi)   ->   -.3
+  # |:.(-.$pi)   ->   ~3
   # |:.$e        ->   3
-  # |:.(1:2)     ->   0
-  # |:.(3:2)     ->   2
-  # |:.(-.1:2)   ->   0
-  # |:.(-.3:2)   ->   -.2
+  # |:.0.5       ->   0
+  # |:.1.5       ->   2
+  # |:.~0.5      ->   0
+  # |:.~1.5      ->   ~2
   round = (n) ->
     x = Math.floor n
     d = n - x
@@ -253,7 +253,7 @@ eq = (x, y) ->
     else if d > .5 then x + 1
     else x + Math.abs(x) % 2
 
-  # 34|:(-.5)      ->   [-.7;-.1]
+  # 34|:~5   ->   [~7;~1]
   (n1, n2) -> [(q = round n1 / n2), n1 - q * n2]
 )
 
@@ -272,14 +272,14 @@ eq = (x, y) ->
   # 'b < 'a      ->   $f
   (s1, s2) -> s1 < s2
 
-  # 3       < "abcdefgh      ->   "abc
-  # (- . 3) < "abcdefgh      ->   "defgh
-  # 3 < "ab                  ->   "ab
-  # (- . 3) < "ab            ->   '()
-  # 3       < [1;2;3;4;5]    ->   [1;2;3]
-  # (- . 3) < [1;2;3;4;5]    ->   [4;5]
-  # 3 < [1;2]                ->   [1;2]
-  # (- . 3) < [1;2]          ->   []
+  #  3<"abcdefgh     ->   "abc
+  # ~3<"abcdefgh     ->   "defgh
+  #  3<"ab           ->   "ab
+  # ~3<"ab           ->   '()
+  #  3<[1;2;3;4;5]   ->   [1;2;3]
+  # ~3<[1;2;3;4;5]   ->   [4;5]
+  #  3<[1;2]         ->   [1;2]
+  # ~3<[1;2]         ->   []
   (i, q) -> if i >= 0 then q[...i] else q[-i...]
 
 
@@ -377,17 +377,17 @@ eq = (x, y) ->
   # 'b > 'a      ->   $t
   (s1, s2) -> s1 > s2
 
-  # 3       > "abcdefgh      ->   "fgh
-  # (- . 3) > "abcdefgh      ->   "abcde
-  # 3 > "ab                  ->   "ab
-  # (- . 3) > "ab            ->   '()
-  # 3       > [1;2;3;4;5]    ->   [3;4;5]
-  # (- . 3) > [1;2;3;4;5]    ->   [1;2]
-  # 3 > [1;2]                ->   [1;2]
-  # (- . 3) > [1;2]          ->   []
+  #  3>"abcdefgh     ->   "fgh
+  # ~3>"abcdefgh     ->   "abcde
+  #  3>"ab           ->   "ab
+  # ~3>"ab           ->   '()
+  #  3>[1;2;3;4;5]   ->   [3;4;5]
+  # ~3>[1;2;3;4;5]   ->   [1;2]
+  #  3>[1;2]         ->   [1;2]
+  # ~3>[1;2]         ->   []
   (i, q) -> if i >= 0 then q[Math.max(0, q.length - i)...] else q[...Math.max(0, q.length + i)]
 
-  # - > [6;3;9;2]   ->   - . 8
+  # - > [6;3;9;2]   ->   ~8
   # - > [123]       ->   123
   # - > []          ->   $
   # + > "abcd       ->   "abcd
@@ -408,10 +408,10 @@ eq = (x, y) ->
 
 @['|'] = polymorphic(
 
-  # |.123         ->   123
-  # |.(- . 123)   ->   123
-  # |.$f          ->   0
-  # |.$t          ->   1
+  # |.123    ->   123
+  # |.~123   ->   123
+  # |.$f     ->   0
+  # |.$t     ->   1
   (n) -> Math.abs n
 
   # $f|$f   ->   $f
@@ -420,8 +420,8 @@ eq = (x, y) ->
   # $t|$t   ->   $t
   (b1, b2) -> b1 or b2
 
-  # 3|5          ->   5
-  # (- . 3)|$t   ->   1
+  # 3|5     ->   5
+  # ~3|$t   ->   1
   (n1, n2) -> Math.max n1, n2
 
   # "star|"trek        ->   "starek
@@ -447,7 +447,7 @@ eq = (x, y) ->
         r.push x
     r
 
-  # 4(|.:)5   ->   5:4
+  # 4(|.:)5   ->   1.25
   (f) ->
     # TODO implement in U as @{f::@{x\(y\r)::f.(y\(x\r))}}
     (a) ->
@@ -463,10 +463,10 @@ eq = (x, y) ->
   # $t&$t   ->   $t
   (b1, b2) -> b1 and b2
 
-  # 12&34             ->   12
-  # (- . 2)&(- . 3)   ->   - . 3
-  # $f&123            ->   0
-  # 123&$t            ->   1
+  # 12&34    ->   12
+  # ~2&~3    ->   ~3
+  # $f&123   ->   0
+  # 123&$t   ->   1
   (n1, n2) -> Math.min n1, n2
 
   # "aqua&"neutral   ->   "aua
@@ -494,15 +494,15 @@ eq = (x, y) ->
 
 @[','] = polymorphic(
 
-  # (- . 2),3   ->   [- . 2; - . 1; 0; 1; 2]
-  # 0,5         ->   [0;1;2;3;4]
-  # 5,0         ->   [5;4;3;2;1]
-  # 5,5         ->   []
-  # $e,5        ->   [$e; 1+$e; 2+$e]
+  # ~2,3   ->   [~2; ~1; 0; 1; 2]
+  # 0,5    ->   [0;1;2;3;4]
+  # 5,0    ->   [5;4;3;2;1]
+  # 5,5    ->   []
+  # $e,5   ->   [$e; 1+$e; 2+$e]
   (n1, n2) -> [n1...n2]
 
   # 1,[10;3]         ->   [1;4;7]
-  # 10,[1;(- . 3)]   ->   [10;7;4]
+  # 10,[1;~3]        ->   [10;7;4]
   # 10,[1;3]         ->   []
   # $pi,[10;$e]      ->   [$pi; $pi+$e; $pi+(2*$e)]
   (n1, q) ->
@@ -517,15 +517,15 @@ eq = (x, y) ->
 
 @[',,'] = polymorphic(
 
-  # (- . 2),,3   ->   [- . 2; - . 1; 0; 1; 2; 3]
-  # 0,,5         ->   [0;1;2;3;4;5]
-  # 5,,0         ->   [5;4;3;2;1;0]
-  # 5,,5         ->   [5]
-  # $e,5         ->   [$e; 1+$e; 2+$e]
+  # ~2,,3   ->   [~2; ~1; 0; 1; 2; 3]
+  # 0,,5    ->   [0;1;2;3;4;5]
+  # 5,,0    ->   [5;4;3;2;1;0]
+  # 5,,5    ->   [5]
+  # $e,5    ->   [$e; 1+$e; 2+$e]
   (n1, n2) -> [n1..n2]
 
   # 1,,[10;3]         ->   [1;4;7;10]
-  # 10,,[1;(- . 3)]   ->   [10;7;4;1]
+  # 10,,[1;~3]        ->   [10;7;4;1]
   # 10,,[1;3]         ->   []
   # $pi,,[10;$e]      ->   [$pi; $pi+$e; $pi+(2*$e)]
   (n1, q) ->
@@ -702,11 +702,11 @@ eq = (x, y) ->
   # [1;2;3].$f    ->   1
   # [1;2;3].$t    ->   2
   # "hello.1      ->   'e
-  # [1;2].(-.1)   ->   2
-  # "abc.(-.2)    ->   'b
+  # [1;2].~1      ->   2
+  # "abc.~2       ->   'b
   # [1;2;3].3     ->   $
   # "hello.10     ->   $
-  # [1;2].(-.3)   ->   $
+  # [1;2].~3      ->   $
   (q, i) ->
     if 0 <= i < q.length then q[i]
     else if -q.length <= i < 0 then q[q.length + i]
@@ -742,7 +742,7 @@ eq = (x, y) ->
 # ===== Numeric functions =====
 
 @int = polymorphic(
-  # int![-.1;0;1;$pi;-.$pi;$e;-.$e;$pinf;$ninf]   ->   [-.1;0;1;3;-.3;2;-.2;$pinf;$ninf]
+  # int![~1;0;1;$pi;-.$pi;$e;-.$e;$pinf;$ninf]   ->   [~1;0;1;3;~3;2;~2;$pinf;$ninf]
   (n) -> if n >= 0 then Math.floor n else Math.ceil n
 )
 
@@ -756,7 +756,7 @@ eq = (x, y) ->
   # 4276309 gcd 8113579   ->   3457
   (n1, n2) ->
     if n1 isnt ~~n1 or n2 isnt ~~n2 or n1 <= 0 or n2 <= 0
-      # 2 gcd (-.3)   ->   error 'positive integers'
+      # 2 gcd ~3      ->   error 'positive integers'
       # $e gcd $pi    ->   error 'positive integers'
       # 7 gcd $pinf   ->   error 'positive integers'
       throw Error '"gcd" is implemented only for positive integers' # TODO
@@ -775,7 +775,7 @@ eq = (x, y) ->
 
 @diag = polymorphic(
   # 3 diag 4            ->   5
-  # 12 diag (-.5)       ->   13
+  # 12 diag ~5          ->   13
   # diag.([2]*10+[3])   ->   7
   # diag.[$pi]          ->   $pi
   (q) ->
@@ -800,8 +800,8 @@ eq = (x, y) ->
 @log = polymorphic(
 
   # 2 log 256             ->   8
-  # 81 log 3              ->   1:4
-  # $pi log (1:($pi^2))   ->   -.2
+  # 81 log 3              ->   0.25
+  # $pi log (1:($pi^2))   ->   ~2
   # 1 log 0               ->   $ninf
   # TODO check for NaN
   (n1, n2) -> Math.log(n2) / Math.log(n1)
@@ -882,8 +882,8 @@ eq = (x, y) ->
   # 0 cut [1;2;3]   ->   [[];[1;2;3]]
   # 3 cut [1;2;3]   ->   [[1;2;3];[]]
   # 0 cut '()       ->   ['();'()]
-  # -.2 cut "abc    ->   ['a;"bc]
-  # -.3 cut "abc    ->   ['();"abc]
+  # ~2 cut "abc     ->   ['a;"bc]
+  # ~3 cut "abc     ->   ['();"abc]
   # TODO What to do with index out of bounds?
   (i, q) -> [q[...i], q[i...]]
 
@@ -904,7 +904,7 @@ eq = (x, y) ->
       throw Error 'Second argument to "update" cannot be a string.'
     if q1.length is 2 and q1[0] is ~~q1[0] and typeof q1[1] is 'function'
       # [1;_^2] update [1;2;3]     ->   [1;4;3]
-      # [-.1;_^2] update [1;2;3]   ->   [1;2;9]
+      # [~1;_^2] update [1;2;3]   ->   [1;2;9]
       # [3;_^2] update [1;2;3]     ->   $
       [i, f] = q1
       if i < 0 then i += q2.length
@@ -933,7 +933,7 @@ eq = (x, y) ->
       throw Error 'Second argument to "before" cannot be a string.'
     if q1.length is 2 and q1[0] is ~~q1[0]
       # [1;99] before [1;2;3]     ->   [1;99;2;3]
-      # [-.1;99] before [1;2;3]   ->   [1;2;99;3]
+      # [~1;99] before [1;2;3]    ->   [1;2;99;3]
       # [3;99] before [1;2;3]     ->   $
       [i, u] = q1
       if i < 0 then i += q2.length
@@ -961,7 +961,7 @@ eq = (x, y) ->
       throw Error 'Second argument to "after" cannot be a string.'
     if q1.length is 2 and q1[0] is ~~q1[0]
       # [1;99] after [1;2;3]     ->   [1;2;99;3]
-      # [-.1;99] after [1;2;3]   ->   [1;2;3;99]
+      # [~1;99] after [1;2;3]    ->   [1;2;3;99]
       # [3;99] after [1;2;3]     ->   $
       [i, u] = q1
       if i < 0 then i += q2.length
