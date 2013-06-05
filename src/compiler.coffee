@@ -12,7 +12,10 @@ helpers = require './helpers'
   """) Object.create(stdlib), helpers
 
 @compile = compile = (uCode) ->
-  renderJS parse uCode
+  ast = parse uCode
+  if ast is false
+    throw Error 'Syntax error'
+  renderJS ast
 
 renderJS = (node) ->
   # 1 _ 1   ->   error 'currying'
