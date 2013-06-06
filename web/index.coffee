@@ -5,10 +5,14 @@ _ = require 'lib/underscore'
 {compile, exec} = require 'src/compiler'
 
 jQuery ($) ->
+
+  # Autofocus fallback, see http://diveintohtml5.info/forms.html
+  if 'autofocus' not of document.createElement 'input'
+    $('#inp').focus()
+
   $('#inp')
-    .focus()
-    .keypress (event) ->
-      if String.fromCharCode(event.which) is "\r"
+    .inputHistory
+      enter: ->
         uCode = $('#inp').val()
         if not uCode then return false
         $('#outp').text $('#outp').text() + '\n' + (
@@ -46,8 +50,6 @@ jQuery ($) ->
             e.stack
         )
         $(window).scrollTop $(document).height()
-        false
-      true
 
 renderAST = (node, indent = '') ->
   indent +
