@@ -9,10 +9,13 @@ helpers = require './helpers'
     var ctx     = arguments[0],
         helpers = arguments[1];
     return #{compile uCode};
-  """) stdlib, helpers
+  """) Object.create(stdlib), helpers
 
 @compile = compile = (uCode) ->
-  renderJS parse uCode
+  ast = parse uCode
+  if ast is false
+    throw Error 'Syntax error'
+  renderJS ast
 
 renderJS = (node) ->
   # 1 _ 1   ->   error 'currying'
@@ -36,8 +39,12 @@ renderJS = (node) ->
       renderJS node
 
     when 'number'
-      # 5   ->   5
-      node
+      # 5           ->   5
+      # ~5          ->   0 - 5
+      # 0-5         ->   ~5
+      # 0.1         ->   0.1
+      # 0.1 + 0.9   ->   1
+      node.replace /^~/, '-'
 
     when 'string'
       JSON.stringify(
@@ -45,6 +52,9 @@ renderJS = (node) ->
           # '(')rock''n'roll)   ->   '(')rock''n'roll)
           # '(()                ->   '(()
           # '('))               ->   ')
+          # #.'('n't')'')       ->   4
+          # '(abc'
+          # ...def)             ->   "abcdef
           h = { n: '\n', t: '\t', ')': ')', "'": "'", '\n': '' }
           node[2...-1].replace /'[nt\)'\n]/g, (x) -> h[x[1]]
         else
@@ -106,17 +116,39 @@ renderJS = (node) ->
       )
 
     when 'def'
+      if node.assignment
+        renderJS node
+      # {a == b ++ b == 6}; a   ->   6
+      # b == 7; {a == b ++ b == 6}; [a;b]   ->   [6;7]
+      # {_\(x\(y\(z\[[z1;z2]]))) == a ++ a == [0;1;2;3;[4;5]]}; [x;y;z;z1;z2]   ->   [1;2;3;4;5]
+      else
+        assignments = node.assignments
+        namesToExport = assignmentNames assignments
+        """
+          helpers.assignmentsWithLocal(ctx,
+            function (ctx) {
+              #{renderJS node.local};
+              #{_(assignments).map(renderJS).join ';\n'};
+            },
+            [#{_(namesToExport).map(JSON.stringify).join(',')}])
+        """
+
+    when 'assignment'
       # a==1; a             ->   1
       # a==2+1; a           ->   3
-      # TODO multiple assignments with a local clause
-      if assignment = node.assignment
-        renderPatternJS assignment.pattern, renderJS _(assignment).pick('expr')
+      renderPatternJS node.pattern, renderJS _(node).pick('expr')
 
     when 'defs'
       _(node).map(renderJS).join ';\n'
 
     when 'closure'
       renderJS node
+
+    when 'parametric'
+      # {a + b ++ a == 6; b == 5}   ->   11
+      # TODO it's better if all .pick()-s are removed and the things they pick - named to avoid reconstructing parts of
+      # the AST in the compiler
+      withLocal node.local, renderJS _(node).pick('expr')
 
     when 'conditional'
       # ?{1::2;3}   ->   2
@@ -138,6 +170,7 @@ renderJS = (node) ->
       # @{a :: a+2} . 3                    ->   5
       # x==5; @{:: x} . $                  ->   5
       # x==5; f==@{:: x}; x==6; f . x      ->   6
+      # TODO the above test is wrong---a name cannot be associated with multiple values
       # TODO test that creating a new function creates a new context
       # @{1 :: 2} . 1                      ->   2
       # @{1 :: 2} . 3                      ->   $
@@ -147,37 +180,58 @@ renderJS = (node) ->
       # @{a (0) :: a+2; a ($t) :: 6} . 3   ->   6
       # 5 @{[x;y]::x+y+y} 3                ->   11
       # @{[x;y]::x+y+y} . 3                ->   $
+      #
+      # each clause should be evaluated in its own context
+      # x == 6; @{x (x > 5) :: 5; _ ($t) :: x} . 3   ->   6
       resultJS = ''
       for { clause: { functionlhs: { pattern, guard }, body } }, i in node.clauses
         # A missing pattern or guard defaults to that from the previous clause.
-        pattern ?= node.clauses[i - 1]?.pattern
-        pattern = if pattern? then renderPatternJS pattern, 'arg' else 'true'
-
-        guard ?= node.clauses[i - 1]?.guard
-        guard = if guard? then renderJS guard else 'true'
+        # @{x (x>5) :: 1;
+        # ... (x>4) :: 2;
+        # ... (x>3) :: 3} . 4   ->   3
+        # @{x (x>5) :: 1;
+        # ...       :: 1;
+        # ...       :: 1;
+        # ... ($t)  :: 2} . 4   ->   2
+        # @{  _ :: ;
+        # ...   :: ;
+        # ...   :: 1;
+        # ...   :: 2} . 4   ->   1
+        resultingPattern = pattern or resultingPattern or node.clauses[i - 1]?.clause.functionlhs.pattern
+        resultingGuard = guard or resultingGuard or node.clauses[i - 1]?.clause.functionlhs.guard
 
         # A missing body defaults to the next clause's body.
-        unless body
+        unless resultingBody = body or resultingBody
           for clause in node.clauses[i+1..]
-            if clause.body?
-              body = clause.body
+            if body = clause.clause.body
+              resultingBody = body
               break
-        body = if body then renderJS body else 'null'
 
-        resultJS += "(#{pattern}) && (#{guard}) ? (#{body}) : "
+        resultJS += """
+          helpers.withNewContext(ctx, function (ctx) {
+              var enter = (#{if resultingPattern? then renderPatternJS resultingPattern, 'arg' else 'true'}) &&
+                          (#{if resultingGuard? then renderJS resultingGuard else 'true'});
+              if (enter) {
+                  body = (#{if resultingBody? then renderJS resultingBody else 'null'});
+              }
+              return enter;
+          }) ||
+        """
       resultJS += 'null'
 
       resultJS = """
-        helpers.createLambda(ctx, function(arg, ctx) {
-            return #{resultJS};
+        helpers.createLambda(ctx, function (arg, ctx) {
+            var body = null;
+            #{resultJS};
+            return body;
         })
       """
 
       if node.local
         resultJS = """
-          helpers.withNewContext(ctx, function(ctx) {
+          helpers.withNewContext(ctx, function (ctx) {
             ctx._function = #{resultJS};
-            #{renderJS node.local}
+            #{renderJS node.local};
             return ctx._function;
           })
         """
@@ -189,8 +243,8 @@ renderJS = (node) ->
 withLocal = (local, expression) ->
   if local?
     """
-      helpers.withNewContext(ctx, function(ctx) {
-        #{renderJS local}
+      helpers.withNewContext(ctx, function (ctx) {
+        #{renderJS local};
         return #{expression};
       })
     """
@@ -201,7 +255,7 @@ nameToJS = (name) ->
   if /^[a-z_\$][a-z0-9_\$]*$/i.test name
     "ctx.#{name}"
   # @{n (n > 0) :: n\(@.(n-1));
-  # ...         :: []}.3   ->   [3;2;1]
+  # ...    ($t) :: []}.3   ->   [3;2;1]
   # @{ $f :: @{ :: @{ :: @@@.$t }.$t}.$t;
   # ... _ :: 5}.$f   ->   5
   # @{  $f :: a;
@@ -215,7 +269,7 @@ nameToJS = (name) ->
     _(name.length - 1).times ->
       parentChain += '._parent'
     """
-      function(arg) {
+      function (arg) {
         return ctx#{parentChain}._function(arg, ctx);
       }
     """
@@ -250,6 +304,7 @@ renderPatternJS = (pattern, valueJS) ->
       wrapInClosure pattern, valueJS
     else if seq = value.sequence?.elements
       # [x;[y;z]]==[1;[2;3]]; x+y+z   ->   6
+      # @{[] :: $t; _ :: $f} . []     ->   $t
       _(seq).reduce(
         (r, elem, i) ->
           r + " && (#{renderPatternJS elem, "#{valueJS}[#{i}]"})"
@@ -299,7 +354,24 @@ renderPatternJS = (pattern, valueJS) ->
 
 wrapInClosure = (pattern, valueJS) ->
   """
-    (function(v) {
+    (function (v) {
       return #{renderPatternJS pattern, 'v'};
     }(#{valueJS}))
   """
+
+# TODO unit test
+assignmentNames = (assignments) ->
+  walkExpr = (expr) ->
+    _(expr).map (subExpr) ->
+      arg = subExpr.argument
+      if name = arg.const?.name
+        name
+      else if arg.sequence?
+        _(arg.sequence.elements).map (e) ->
+          walkExpr e.expr
+      else if arg.expr?
+        walkExpr arg.expr
+
+  exprs = _(assignments).map (assignment) ->
+    assignment.assignment.pattern.expr
+  _(_(exprs).map(walkExpr)).flatten()

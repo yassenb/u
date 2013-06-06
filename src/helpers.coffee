@@ -4,12 +4,12 @@
 @withNewContext = (ctx, f) ->
   f Object.create(ctx)
 
+# f == @{ :: @{ :: x} ++ x == 4}.$t; x == 5; f.$t   ->   4
+# f == @{$t :: @{ :: @@}; $f :: 5}.$t; f.$t.$f      ->   5
 @createLambda = (ctx, f) ->
-  (x) ->
-    newCtx = Object.create ctx
-    newCtx._function = f
-    newCtx._parent = ctx
-    f x, newCtx
+  newCtx = Object.create ctx
+  newCtx._parent = ctx
+  newCtx._function = (x) -> f x, newCtx
 
 @curryRight = (f, y) ->
   (x, ctx) ->
@@ -18,3 +18,11 @@
 @curryLeft  = (f, x) ->
   (y, ctx) ->
     f [x, y], ctx
+
+@assignmentsWithLocal = (ctx, f, namesToExport) ->
+  newCtx = Object.create ctx
+  f newCtx
+  for name, value of newCtx
+    if namesToExport.indexOf(name) isnt -1
+      ctx[name] = newCtx[name]
+  null

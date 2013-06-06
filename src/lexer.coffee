@@ -13,12 +13,13 @@ _ = require '../lib/underscore'
 tokenDefs = [
   ['-',              /\s+/]          # whitespace
   ['-',              /"[^a-z\{].*/i] # line comment
+  ['-',              /^#!.*/i]       # line comment
   ['-',              ///             # block comment
                        "\{.*
                        (?: \s* (?: " | "[^\}].* | [^"].* ) [\n\r]+ )*
                        "\}.*         # TODO block comments can be nested
                      ///]
-  ['number',         /\d+/]          # TODO floating point numbers
+  ['number',         /~?\d+(?:\.\d+)?/]
   ['string',         /'\(('[^]|[^'\)])*\)/]
   ['string',         /'[^\(]/]
   ['string',         /"[a-z][a-z0-9]*/i]
@@ -95,8 +96,12 @@ tokenDefs = [
 
   # returns the stream to the state of the call to `getPosition()' by which `pos' was obtained
   rollback: (pos) ->
-    position = _(pos).clone()
+    position.line = pos.line
+    position.col  = pos.col
+    position.code = pos.code
 
   # returns a position - something you can pass to `rollback(pos)' to restore to that position in the stream
   getPosition: ->
-    _(position).clone()
+    line: position.line
+    col:  position.col
+    code: position.code

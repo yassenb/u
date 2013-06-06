@@ -24,8 +24,8 @@ _ = require '../lib/underscore'
 polymorphic = (fs...) ->
   signatures =
     for f in fs
-      for t in ('' + f).replace(/^\s*function\s*\(([^\)]*)\)[^]+$/, '$1').split /\s*,\s*/
-        t[0]
+      paramNames = ('' + f).replace(/^\s*function\s*\(([^\)]*)\)[^]+$/, '$1').split /\s*,\s*/
+      (for t in paramNames then t[0]).join ''
   (a) ->
     for f, i in fs when (xs = coerce a, signatures[i]) then return f xs...
     throw Error """
@@ -41,11 +41,11 @@ polymorphic = (fs...) ->
 coerce = (a, ts) ->
   if ts.length is 2
     if a instanceof Array and a.length is 2 and
-            (x = coerce a[0], [ts[0]]) and
-            (y = coerce a[1], [ts[1]])
+            (x = coerce a[0], ts[0]) and
+            (y = coerce a[1], ts[1])
       x.concat y
   else if ts.length is 1
-    switch ts[0]
+    switch ts
       when 'n' then if typeof a in ['number', 'boolean'] then [+a]
       when 'i' then if typeof a in ['number', 'boolean'] and +a is ~~a then [+a]
       when 'b' then if typeof a is 'boolean' then [a]
@@ -54,7 +54,7 @@ coerce = (a, ts) ->
       when 'p' then undefined # TODO pictures
       when 'f' then if typeof a is 'function' then [a]
       when 'x' then [a]
-      else throw Error 'Bad type symbol, ' + JSON.stringify ts[0]
+      else throw Error 'Bad type symbol, ' + JSON.stringify ts
   else
     throw Error 'Bad type signature, ' + JSON.stringify ts
 
@@ -94,13 +94,13 @@ eq = (x, y) ->
 
 @['-'] = polymorphic(
 
-  # -.$t   ->   - . 1
+  # -.$t   ->   ~1
   # -.'a   ->   error 'Unsupported'
   (n) -> -n
 
-  # 2 - 3     ->   - . 1
-  # 2 - 3     ->   - . 1
-  # $f - $t   ->   - . 1
+  # 2 - 3     ->   ~1
+  # 2 - 3     ->   ~1
+  # $f - $t   ->   ~1
   # 3 - $t    ->   2
   (n1, n2) -> n1 - n2
 
@@ -131,7 +131,7 @@ eq = (x, y) ->
 @['*'] = polymorphic(
 
   # * . 123         ->   1
-  # * . (- . 123)   ->   - . 1
+  # * . ~123        ->   ~1
   # * . 0           ->   0
   # * . $t          ->   1
   # * . $f          ->   0
@@ -147,7 +147,7 @@ eq = (x, y) ->
   # "abc*0          ->   '()
   # TODO should we allow i*q as well?
   # [2;5]*$pi       ->   error 'Unsupported'
-  # [2;5]*(- . 1)   ->   error 'non-negative'
+  # [2;5]*~1        ->   error 'non-negative'
   # 'a*$pinf        ->   error 'Unsupported'
   (q, i) ->
     if i < 0
@@ -162,10 +162,10 @@ eq = (x, y) ->
 
 @['^'] = polymorphic(
 
-  # 2^3               ->   8
-  # 3^2               ->   9
-  # (- . 1)^2         ->   1
-  # (- . 1)^(- . 1)   ->   - . 1
+  # 2^3     ->   8
+  # 3^2     ->   9
+  # ~1^2    ->   1
+  # ~1^~1   ->   ~1
   (n1, n2) -> Math.pow n1, n2
 
   # (_+[1;2]^3).[777]     ->   [777;1;2;1;2;1;2]
@@ -193,7 +193,7 @@ eq = (x, y) ->
   # [1;2;3;4]:4       ->   [[1];[2];[3];[4]]
   # [1;2;3;4]:5       ->   [[1];[2];[3];[4];[]]
   # []:3              ->   [[];[];[]]
-  # [1;2;3]:(- . 1)   ->   error 'must be positive'
+  # [1;2;3]:~1        ->   error 'must be positive'
   (q, i) ->
     if i <= 0 then throw Error 'Sequence denominator must be positive.'
     r = q.length % i
@@ -209,7 +209,7 @@ eq = (x, y) ->
   # 4:[1;2;3;4]       ->   [[1;2;3;4]]
   # 5:[1;2;3;4]       ->   [[1;2;3;4]]
   # 3:[]              ->   []
-  # (- . 1):[1;2;3]   ->   error 'must be positive'
+  # ~1:[1;2;3]        ->   error 'must be positive'
   (i, q) ->
     if i <= 0 then throw Error 'Sequence numerator must be positive.'
     for j in [0...q.length] by i then q[j...j+i]
@@ -218,34 +218,34 @@ eq = (x, y) ->
 @['<:'] = polymorphic(
 
   # <:.$pi       ->   3
-  # <:.(-.$pi)   ->   -.4
+  # <:.(-.$pi)   ->   ~4
   (n) -> Math.floor n
 
-  # 34<:(-.5)        ->   [(-.7);(-.1)]
-  # (-.(12:10))<:1   ->   [(-.2);(8:10)]
+  # 34<:~5    ->   [~7;~1]
+  # ~1.2<:1   ->   [~2;0.8]
   (n1, n2) -> [(q = Math.floor n1 / n2), n1 - q * n2]
 )
 
 @['>:'] = polymorphic(
 
   # >:.$pi       ->   4
-  # >:.(-.$pi)   ->   -.3
+  # >:.(-.$pi)   ->   ~3
   (n) -> Math.ceil n
 
-  # 34>:(-.5)        ->   [(-.6);4]
-  # (-.(15:10))>:1   ->   [(-.1);(-.(5:10))]
+  # 34>:~5    ->   [~6;4]
+  # ~1.5>:1   ->   [~1;~0.5]
   (n1, n2) -> [(q = Math.ceil n1 / n2), n1 - q * n2]
 )
 
 @['|:'] = polymorphic(
 
   # |:.$pi       ->   3
-  # |:.(-.$pi)   ->   -.3
+  # |:.(-.$pi)   ->   ~3
   # |:.$e        ->   3
-  # |:.(1:2)     ->   0
-  # |:.(3:2)     ->   2
-  # |:.(-.1:2)   ->   0
-  # |:.(-.3:2)   ->   -.2
+  # |:.0.5       ->   0
+  # |:.1.5       ->   2
+  # |:.~0.5      ->   0
+  # |:.~1.5      ->   ~2
   round = (n) ->
     x = Math.floor n
     d = n - x
@@ -253,7 +253,7 @@ eq = (x, y) ->
     else if d > .5 then x + 1
     else x + Math.abs(x) % 2
 
-  # 34|:(-.5)      ->   [-.7;-.1]
+  # 34|:~5   ->   [~7;~1]
   (n1, n2) -> [(q = round n1 / n2), n1 - q * n2]
 )
 
@@ -272,14 +272,14 @@ eq = (x, y) ->
   # 'b < 'a      ->   $f
   (s1, s2) -> s1 < s2
 
-  # 3       < "abcdefgh      ->   "abc
-  # (- . 3) < "abcdefgh      ->   "defgh
-  # 3 < "ab                  ->   "ab
-  # (- . 3) < "ab            ->   '()
-  # 3       < [1;2;3;4;5]    ->   [1;2;3]
-  # (- . 3) < [1;2;3;4;5]    ->   [4;5]
-  # 3 < [1;2]                ->   [1;2]
-  # (- . 3) < [1;2]          ->   []
+  #  3<"abcdefgh     ->   "abc
+  # ~3<"abcdefgh     ->   "defgh
+  #  3<"ab           ->   "ab
+  # ~3<"ab           ->   '()
+  #  3<[1;2;3;4;5]   ->   [1;2;3]
+  # ~3<[1;2;3;4;5]   ->   [4;5]
+  #  3<[1;2]         ->   [1;2]
+  # ~3<[1;2]         ->   []
   (i, q) -> if i >= 0 then q[...i] else q[-i...]
 
 
@@ -377,17 +377,17 @@ eq = (x, y) ->
   # 'b > 'a      ->   $t
   (s1, s2) -> s1 > s2
 
-  # 3       > "abcdefgh      ->   "fgh
-  # (- . 3) > "abcdefgh      ->   "abcde
-  # 3 > "ab                  ->   "ab
-  # (- . 3) > "ab            ->   '()
-  # 3       > [1;2;3;4;5]    ->   [3;4;5]
-  # (- . 3) > [1;2;3;4;5]    ->   [1;2]
-  # 3 > [1;2]                ->   [1;2]
-  # (- . 3) > [1;2]          ->   []
+  #  3>"abcdefgh     ->   "fgh
+  # ~3>"abcdefgh     ->   "abcde
+  #  3>"ab           ->   "ab
+  # ~3>"ab           ->   '()
+  #  3>[1;2;3;4;5]   ->   [3;4;5]
+  # ~3>[1;2;3;4;5]   ->   [1;2]
+  #  3>[1;2]         ->   [1;2]
+  # ~3>[1;2]         ->   []
   (i, q) -> if i >= 0 then q[Math.max(0, q.length - i)...] else q[...Math.max(0, q.length + i)]
 
-  # - > [6;3;9;2]   ->   - . 8
+  # - > [6;3;9;2]   ->   ~8
   # - > [123]       ->   123
   # - > []          ->   $
   # + > "abcd       ->   "abcd
@@ -408,10 +408,10 @@ eq = (x, y) ->
 
 @['|'] = polymorphic(
 
-  # |.123         ->   123
-  # |.(- . 123)   ->   123
-  # |.$f          ->   0
-  # |.$t          ->   1
+  # |.123    ->   123
+  # |.~123   ->   123
+  # |.$f     ->   0
+  # |.$t     ->   1
   (n) -> Math.abs n
 
   # $f|$f   ->   $f
@@ -420,8 +420,8 @@ eq = (x, y) ->
   # $t|$t   ->   $t
   (b1, b2) -> b1 or b2
 
-  # 3|5          ->   5
-  # (- . 3)|$t   ->   1
+  # 3|5     ->   5
+  # ~3|$t   ->   1
   (n1, n2) -> Math.max n1, n2
 
   # "star|"trek        ->   "starek
@@ -447,7 +447,7 @@ eq = (x, y) ->
         r.push x
     r
 
-  # 4(|.:)5   ->   5:4
+  # 4(|.:)5   ->   1.25
   (f) ->
     # TODO implement in U as @{f::@{x\(y\r)::f.(y\(x\r))}}
     (a) ->
@@ -463,10 +463,10 @@ eq = (x, y) ->
   # $t&$t   ->   $t
   (b1, b2) -> b1 and b2
 
-  # 12&34             ->   12
-  # (- . 2)&(- . 3)   ->   - . 3
-  # $f&123            ->   0
-  # 123&$t            ->   1
+  # 12&34    ->   12
+  # ~2&~3    ->   ~3
+  # $f&123   ->   0
+  # 123&$t   ->   1
   (n1, n2) -> Math.min n1, n2
 
   # "aqua&"neutral   ->   "aua
@@ -494,15 +494,15 @@ eq = (x, y) ->
 
 @[','] = polymorphic(
 
-  # (- . 2),3   ->   [- . 2; - . 1; 0; 1; 2]
-  # 0,5         ->   [0;1;2;3;4]
-  # 5,0         ->   [5;4;3;2;1]
-  # 5,5         ->   []
-  # $e,5        ->   [$e; 1+$e; 2+$e]
+  # ~2,3   ->   [~2; ~1; 0; 1; 2]
+  # 0,5    ->   [0;1;2;3;4]
+  # 5,0    ->   [5;4;3;2;1]
+  # 5,5    ->   []
+  # $e,5   ->   [$e; 1+$e; 2+$e]
   (n1, n2) -> [n1...n2]
 
   # 1,[10;3]         ->   [1;4;7]
-  # 10,[1;(- . 3)]   ->   [10;7;4]
+  # 10,[1;~3]        ->   [10;7;4]
   # 10,[1;3]         ->   []
   # $pi,[10;$e]      ->   [$pi; $pi+$e; $pi+(2*$e)]
   (n1, q) ->
@@ -517,15 +517,15 @@ eq = (x, y) ->
 
 @[',,'] = polymorphic(
 
-  # (- . 2),,3   ->   [- . 2; - . 1; 0; 1; 2; 3]
-  # 0,,5         ->   [0;1;2;3;4;5]
-  # 5,,0         ->   [5;4;3;2;1;0]
-  # 5,,5         ->   [5]
-  # $e,5         ->   [$e; 1+$e; 2+$e]
+  # ~2,,3   ->   [~2; ~1; 0; 1; 2; 3]
+  # 0,,5    ->   [0;1;2;3;4;5]
+  # 5,,0    ->   [5;4;3;2;1;0]
+  # 5,,5    ->   [5]
+  # $e,5    ->   [$e; 1+$e; 2+$e]
   (n1, n2) -> [n1..n2]
 
   # 1,,[10;3]         ->   [1;4;7;10]
-  # 10,,[1;(- . 3)]   ->   [10;7;4;1]
+  # 10,,[1;~3]        ->   [10;7;4;1]
   # 10,,[1;3]         ->   []
   # $pi,,[10;$e]      ->   [$pi; $pi+$e; $pi+(2*$e)]
   (n1, q) ->
@@ -702,11 +702,11 @@ eq = (x, y) ->
   # [1;2;3].$f    ->   1
   # [1;2;3].$t    ->   2
   # "hello.1      ->   'e
-  # [1;2].(-.1)   ->   2
-  # "abc.(-.2)    ->   'b
+  # [1;2].~1      ->   2
+  # "abc.~2       ->   'b
   # [1;2;3].3     ->   $
   # "hello.10     ->   $
-  # [1;2].(-.3)   ->   $
+  # [1;2].~3      ->   $
   (q, i) ->
     if 0 <= i < q.length then q[i]
     else if -q.length <= i < 0 then q[q.length + i]
@@ -737,6 +737,348 @@ eq = (x, y) ->
 @['<<'] = polymorphic(
   # (1+_)<<(2*_) . 3   ->   7
   (f1, f2) -> (a) -> f1 f2 a
+)
+
+# ===== Numeric functions =====
+
+@int = polymorphic(
+  # int![~1;0;1;$pi;-.$pi;$e;-.$e;$pinf;$ninf]   ->   [~1;0;1;3;~3;2;~2;$pinf;$ninf]
+  (n) -> if n >= 0 then Math.floor n else Math.ceil n
+)
+
+# TODO rat n i
+
+@gcd = gcd = polymorphic(
+  # 12 gcd 30   ->   6
+  # 1  gcd 17   ->   1
+  # 17 gcd 17   ->   17
+  # 81 gcd 256  ->   1
+  # 4276309 gcd 8113579   ->   3457
+  (n1, n2) ->
+    if n1 isnt ~~n1 or n2 isnt ~~n2 or n1 <= 0 or n2 <= 0
+      # 2 gcd ~3      ->   error 'positive integers'
+      # $e gcd $pi    ->   error 'positive integers'
+      # 7 gcd $pinf   ->   error 'positive integers'
+      throw Error '"gcd" is implemented only for positive integers' # TODO
+    while n2 then [n1, n2] = [n2, n1 % n2]
+    n1
+)
+
+@lcm = polymorphic(
+  # 12 lcm 30   ->   60
+  # 1  lcm 17   ->   17
+  # 17 lcm 17   ->   17
+  # 81 lcm 256  ->   20736
+  # 4276309 lcm 8113579   ->   10036497223
+  (n1, n2) -> n1 * (n2 / gcd [n1, n2])
+)
+
+@diag = polymorphic(
+  # 3 diag 4            ->   5
+  # 12 diag ~5          ->   13
+  # diag.([2]*10+[3])   ->   7
+  # diag.[$pi]          ->   $pi
+  (q) ->
+    r = 0
+    for x in q
+      if typeof x isnt 'number'
+        # diag.[123;'(456)]   ->   error 'numbers'
+        throw Error 'diag\'s argument must consist of numbers.'
+      r += x * x
+    Math.sqrt r
+)
+
+# Trigonometric functions
+# TODO add tests when we have floating point numbers
+@sin  = polymorphic (n) -> Math.sin  n
+@cos  = polymorphic (n) -> Math.cos  n
+@tan  = polymorphic (n) -> Math.tan  n
+@asin = polymorphic (n) -> Math.asin n
+@acos = polymorphic (n) -> Math.acos n
+@atan = polymorphic (n1, n2) -> Math.atan2 n1, n2
+
+@log = polymorphic(
+
+  # 2 log 256             ->   8
+  # 81 log 3              ->   0.25
+  # $pi log (1:($pi^2))   ->   ~2
+  # 1 log 0               ->   $ninf
+  # TODO check for NaN
+  (n1, n2) -> Math.log(n2) / Math.log(n1)
+)
+
+# TODO random n1 n2
+
+# ===== Functions for sequences =====
+
+# empty(...)
+# empty.[]     ->   $t
+# empty.'()    ->   $t
+# empty.[1]    ->   $f
+# empty.'a     ->   $f
+# empty.0      ->   $f
+# empty.[[]]   ->   $f
+# empty.$f     ->   $f
+# empty.$      ->   $f
+@empty = (x) -> (x instanceof Array or typeof x is 'string') and x.length is 0
+
+@fst = polymorphic(
+  # fst.[1;2]   ->   1
+  # fst."ab     ->   'a
+  # TODO Should we return $ for an empty list/sequence?
+  (q) -> if q.length then q[0] else null
+)
+
+@bst = polymorphic(
+  # bst.[1;2]   ->   2
+  # bst."ab     ->   'b
+  # TODO Should we return $ for an empty list/sequence?
+  (q) -> if q.length then q[q.length - 1] else null
+)
+
+@butf = polymorphic(
+  # butf.[1;2;3]   ->   [2;3]
+  # butf."abc      ->   "bc
+  # butf.[1]       ->   []
+  # butf.'a        ->   '()
+  # butf.[]        ->   []
+  # butf.'()       ->   '()
+  (q) -> q[1...]
+)
+
+@butb = polymorphic(
+  # butb.[1;2;3]   ->   [1;2]
+  # butb."abc      ->   "ab
+  # butb.[1]       ->   []
+  # butb.'a        ->   '()
+  # butb.[]        ->   []
+  # butb.'()       ->   '()
+  (q) -> q[...-1]
+)
+
+@rol = polymorphic(
+  # rol.[1;2;3]   ->   [2;3;1]
+  # rol."abc      ->   "bca
+  # rol.[1]       ->   [1]
+  # rol.'a        ->   'a
+  # rol.[]        ->   []
+  # rol.'()       ->   '()
+  (q) -> q[1...].concat q[...1]
+)
+
+@ror = polymorphic(
+  # ror.[1;2;3]   ->   [3;1;2]
+  # ror."abc      ->   "cab
+  # ror.[1]       ->   [1]
+  # ror.'a        ->   'a
+  # ror.[]        ->   []
+  # ror.'()       ->   '()
+  (q) -> q[-1...].concat q[...-1]
+)
+
+@cut = polymorphic(
+
+  # 2 cut "abcde    ->   ["ab;"cde]
+  # 0 cut [1;2;3]   ->   [[];[1;2;3]]
+  # 3 cut [1;2;3]   ->   [[1;2;3];[]]
+  # 0 cut '()       ->   ['();'()]
+  # ~2 cut "abc     ->   ['a;"bc]
+  # ~3 cut "abc     ->   ['();"abc]
+  # TODO What to do with index out of bounds?
+  (i, q) -> [q[...i], q[i...]]
+
+  # _<3 cut [2;1;5;8;2;4]   ->   [[2;1];[5;8;2;4]]
+  # _='a cut "abc           ->   ['a;"bc]
+  # _='x cut "abc           ->   ['();"abc]
+  # _<>'x cut "abc          ->   ["abc;'()]
+  (f, q) ->
+    i = 0
+    while i < q.length and f q[i] then i++
+    [q[...i], q[i...]]
+)
+
+@update = polymorphic(
+  (q1, q2) ->
+    if typeof q2 is 'string'
+      # TODO What do we do in this case?
+      throw Error 'Second argument to "update" cannot be a string.'
+    if q1.length is 2 and q1[0] is ~~q1[0] and typeof q1[1] is 'function'
+      # [1;_^2] update [1;2;3]     ->   [1;4;3]
+      # [~1;_^2] update [1;2;3]   ->   [1;2;9]
+      # [3;_^2] update [1;2;3]     ->   $
+      [i, f] = q1
+      if i < 0 then i += q2.length
+      if 0 <= i < q2.length
+        q2[...i].concat [f q2[i]], q2[i + 1...]
+      else
+        null
+    else if q1.length is 3 and typeof q1[0] is typeof q1[1] is 'function'
+      # [_>3;_^2;99] update [1;2;3;4;5]   ->   [1;2;3;16;5]
+      # [_>7;_^2;99] update [1;2;3;4;5]   ->   [1;2;3;4;5;99]
+      [p, f, u] = q1
+      r = null
+      for x, i in q2 when p x
+        r = q2[...i].concat [f x], q2[i + 1...]
+        break
+      r or q2.concat [u]
+    else
+      # [1;2] update [3;4]   ->   error 'Invalid first argument'
+      throw Error 'Invalid first argument to "update"'
+)
+
+@before = polymorphic(
+  (q1, q2) ->
+    if typeof q2 is 'string'
+      # TODO What do we do in this case?
+      throw Error 'Second argument to "before" cannot be a string.'
+    if q1.length is 2 and q1[0] is ~~q1[0]
+      # [1;99] before [1;2;3]     ->   [1;99;2;3]
+      # [~1;99] before [1;2;3]    ->   [1;2;99;3]
+      # [3;99] before [1;2;3]     ->   $
+      [i, u] = q1
+      if i < 0 then i += q2.length
+      if 0 <= i < q2.length
+        q2[...i].concat [u], q2[i...]
+      else
+        null
+    else if q1.length is 3 and typeof q1[0] is typeof q1[1] is 'function'
+      # [_>3;_^2;99] before [1;2;3;4;5]   ->   [1;2;3;16;4;5]
+      # [_>7;_^2;99] before [1;2;3;4;5]   ->   [1;2;3;4;5;99]
+      [p, f, u] = q1
+      r = null
+      for x, i in q2 when p x
+        return q2[...i].concat [f x], q2[i...]
+      q2.concat [u]
+    else
+      # ['a;2] before [3;4]   ->   error 'Invalid first argument'
+      throw Error 'Invalid first argument to "before"'
+)
+
+@after = polymorphic(
+  (q1, q2) ->
+    if typeof q2 is 'string'
+      # TODO What do we do in this case?
+      throw Error 'Second argument to "after" cannot be a string.'
+    if q1.length is 2 and q1[0] is ~~q1[0]
+      # [1;99] after [1;2;3]     ->   [1;2;99;3]
+      # [~1;99] after [1;2;3]    ->   [1;2;3;99]
+      # [3;99] after [1;2;3]     ->   $
+      [i, u] = q1
+      if i < 0 then i += q2.length
+      if 0 <= i < q2.length
+        q2[...i + 1].concat [u], q2[i + 1...]
+      else
+        null
+    else if q1.length is 3 and typeof q1[0] is typeof q1[1] is 'function'
+      # [_>3;_^2;99] after [1;2;3;4;5]   ->   [1;2;3;4;16;5]
+      # [_>7;_^2;99] after [1;2;3;4;5]   ->   [99;1;2;3;4;5]
+      [p, f, u] = q1
+      r = null
+      for x, i in q2 when p x
+        return q2[...i + 1].concat [f x], q2[i + 1...]
+      [u].concat q2
+    else
+      # ['a;2] after [3;4]   ->   error 'Invalid first argument'
+      throw Error 'Invalid first argument to "after"'
+)
+
+@count = polymorphic(
+  # _>3 count [4;1;3;5;1]     ->   2
+  # _='s count "mississippi   ->   4
+  (f, q) ->
+    r = 0
+    for x in q when f x then r++
+    r
+)
+
+# ===== Input/output functions =====
+
+isNodeJS = not window?
+
+fmt = (x) ->
+  if x instanceof Array then _(x).map(fmt).join ' '
+  else if x is null then '$'
+  else if typeof x is 'boolean' then '$' + 'ft'[+x]
+  else '' + x
+
+# writeHelper(...)
+# flag can be 'w' for write (the default) or 'a' for append
+writeHelper = (filename, data, flag) ->
+  content = fmt data
+  if filename is ''
+    if isNodeJS
+      process.stdout.write content
+    else
+      alert content
+  else if typeof filename is 'string'
+    # TODO return $ on failure
+    if isNodeJS
+      require('fs').writeFileSync filename, content, {flag}
+    else
+      localStorage.setItem filename,
+        if flag is 'a' then (localStorage.getItem(filename) or '') + content
+        else content
+  else if filename isnt null
+    throw Error 'First argument to "write" or "writa" must be a string or $'
+  content
+
+@write = polymorphic(
+  # $ write "abc             ->   "abc
+  # $ write ["abc]           ->   "abc
+  # $ write [1;2;3;"abc]     ->   '(1 2 3 abc)
+  # $ write [1;[2;3];"abc]   ->   '(1 2 3 abc)
+  (x, q) -> writeHelper x, q
+)
+
+@writa = polymorphic(
+  (x, q) -> writeHelper x, q, 'a'
+)
+
+@readf = polymorphic(
+  (s, q) ->
+    content =
+      if s
+        # TODO return $ on failure
+        if isNodeJS
+          require('fs').readFileSync s
+        else
+          localStorage.getItem s
+      else
+        if isNodeJS
+          throw Error 'Cannot read synchronously from stdin in NodeJS'
+        else
+          prompt 'Input:'
+    if content?
+      reads [content, q]
+    else
+      null
+)
+
+@reads = reads = polymorphic(
+  # '(123 456 789)   reads ["num;"str;"num]   ->   [123;'(456);789;'()]
+  # '(1't2)          reads ["num;"num]        ->   [1;2;'()]
+  # '( 't 1't 't2't) reads ["num;"num]        ->   [1;2;'('t)]
+  # '(1't2)          reads ["num]             ->   [1;'('t2)]
+  # '(1'n2)          reads ["num;"num]        ->   [1;'()]
+  # '(a b)           reads ["str]             ->   ['a;'( b)]
+  # '(a b)           reads ["num]             ->   $
+  # '(a b)           reads []                 ->   ['(a b)]
+  (s, q) ->
+    s = s.replace /^(.*)[^]*$/, '$1' # cut `s` off at the first newline
+    r = []
+    for t in q
+      if not (m = s.match /^[ \t]*([^ \t]+)(.*)$/) then break
+      [_ignore, item, s] = m
+      if t is 'str'
+        r.push item
+      else if t is 'num'
+        # TODO negative and floating-point numbers
+        if not /^\d+$/.test item then return null
+        r.push parseInt item, 10
+      else
+        throw Error "Invalid type, #{JSON.stringify t}.  Only \"num\" and \"str\" are allowed."
+    r.push s
+    r
 )
 
 # Remember each built-in function's name in case we need it for debugging purposes
