@@ -11,10 +11,13 @@
   _ref = require('src/compiler'), compile = _ref.compile, exec = _ref.exec;
 
   jQuery(function($) {
-    return $('#inp').focus().keypress(function(event) {
-      var e, t, tokenStream, uCode;
+    if (!('autofocus' in document.createElement('input'))) {
+      $('#inp').focus();
+    }
+    return $('#inp').inputHistory({
+      enter: function() {
+        var e, t, tokenStream, uCode;
 
-      if (String.fromCharCode(event.which) === "\r") {
         uCode = $('#inp').val();
         if (!uCode) {
           return false;
@@ -47,10 +50,8 @@
             return e.stack;
           }
         })()));
-        $(window).scrollTop($(document).height());
-        false;
+        return $(window).scrollTop($(document).height());
       }
-      return true;
     });
   });
 
