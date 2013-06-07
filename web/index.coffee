@@ -3,6 +3,7 @@ _ = require 'lib/underscore'
 {parse} = require 'src/peg-parser/u-grammar'
 {tokenize} = require 'src/lexer'
 {compile, exec} = require 'src/compiler'
+stdlib = require 'src/stdlib'
 
 jQuery ($) ->
 
@@ -10,6 +11,7 @@ jQuery ($) ->
   if 'autofocus' not of document.createElement 'input'
     $('#inp').focus()
 
+  ctx = Object.create stdlib
   $('#inp')
     .inputHistory
       enter: ->
@@ -23,7 +25,7 @@ jQuery ($) ->
         try
           switch command
             when ''
-              $('#outp').append $('<div class="result"/>').text repr exec uCode
+              $('#outp').append $('<div class="result"/>').text repr exec uCode, ctx
             when '.t'
               tokenStream = tokenize uCode
               $('#outp').append $('<div class="tokens"/>').text """
