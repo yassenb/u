@@ -84,7 +84,7 @@ repr = (x) ->
   else if typeof x is 'number'
     if x is Infinity then '$pinf'
     else if x is -Infinity then '$ninf'
-    else '' + x
+    else ('' + x).replace /-/g, '~'
   else if typeof x is 'boolean' then '$' + 'ft'[+x]
   else if typeof x is 'function' then '@{...}'
   else if typeof x is 'string'
