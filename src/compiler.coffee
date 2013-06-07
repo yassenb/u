@@ -6,10 +6,10 @@ helpers = require './helpers'
 
 @exec = (uCode, ctx) ->
   ctx ?= Object.create stdlib
-  (new Function """
-    var ctx     = arguments[0],
-        helpers = arguments[1];
-    return #{compile uCode};
+  (eval """
+    (function (ctx, helpers) {
+        return #{compile uCode};
+    })
   """) ctx, helpers
 
 @compile = compile = (uCode) ->
