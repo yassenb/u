@@ -23,3 +23,6 @@ body {
     padding-bottom: 4ex;
     white-space: pre;
 }
+
+#outp .inputLine { font-weight: bold; color: #00c; }
+#outp .error { color: #c00; }

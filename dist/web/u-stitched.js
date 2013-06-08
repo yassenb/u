@@ -1343,8 +1343,11 @@
 
   helpers = require('./helpers');
 
-  this.exec = function(uCode) {
-    return (new Function("var ctx     = arguments[0],\n    helpers = arguments[1];\nreturn " + (compile(uCode)) + ";"))(Object.create(stdlib), helpers);
+  this.exec = function(uCode, ctx) {
+    if (ctx == null) {
+      ctx = Object.create(stdlib);
+    }
+    return (eval("(function (ctx, helpers) {\n    return " + (compile(uCode)) + ";\n})"))(ctx, helpers);
   };
 
   this.compile = compile = function(uCode) {
@@ -1642,6 +1645,18 @@
 
   tokenDefs = [['-', /\s+/], ['-', /"[^a-z\{].*/i], ['-', /^#!.*/i], ['-', /"\{.*(?:\s*(?:"|"[^\}].*|[^"].*)[\n\r]+)*"\}.*/], ['number', /~?\d+(?:\.\d+)?/], ['string', /'\(('[^]|[^'\)])*\)/], ['string', /'[^\(]/], ['string', /"[a-z][a-z0-9]*/i], ['', /(?:==|\?\{|@\{|::|\+\+|[\(\)\[\]\{\};_])/], ['dollarConstant', /\$[a-z]*/i], ['name', /[a-z][a-z0-9]*/i], ['name', /(?:<:|>:|\|:|=>|\|\||<=|>=|<>|,,|>>|<<|%%)/], ['name', /[\+\-\*:\^=<>\/\\\.\#!%~\|,&]/], ['name', /@+/]];
 
+  (function() {
+    var d, re, _i, _len, _results;
+
+    _results = [];
+    for (_i = 0, _len = tokenDefs.length; _i < _len; _i++) {
+      d = tokenDefs[_i];
+      re = d[1];
+      _results.push(d[1] = new RegExp('^' + re.source, re.ignoreCase ? 'i' : void 0));
+    }
+    return _results;
+  })();
+
   this.tokenize = function(code, opts) {
     var position;
 
@@ -1673,7 +1688,6 @@
           type = null;
           for (_i = 0, _len = tokenDefs.length; _i < _len; _i++) {
             _ref = tokenDefs[_i], t = _ref[0], re = _ref[1];
-            re = new RegExp('^' + re.source, re.ignoreCase ? "i" : void 0);
             if (match = position.code.match(re)) {
               type = t || match[0];
               break;
