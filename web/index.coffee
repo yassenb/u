@@ -3,6 +3,7 @@ _ = require 'lib/underscore'
 {parse} = require 'src/peg-parser/u-grammar'
 {tokenize} = require 'src/lexer'
 {compile, exec} = require 'src/compiler'
+stdlib = require 'src/stdlib'
 
 jQuery ($) ->
 
@@ -10,17 +11,24 @@ jQuery ($) ->
   if 'autofocus' not of document.createElement 'input'
     $('#inp').focus()
 
+  ctx = Object.create stdlib
   $('#inp')
     .inputHistory
       enter: ->
-        uCode = $('#inp').val()
-        if not uCode then return false
-        $('#outp').text $('#outp').text() + '\n' + (
-          try
-            if /^\.t\b/.test uCode
-              uCode = uCode[3...]
+        inputLine = $('#inp').val()
+        if not inputLine then return
+        if m = inputLine.match /^\s*(\.\w+)\s+(.*)$/
+          [_0, command, uCode] = m
+        else
+          [command, uCode] = ['', inputLine]
+        $('#outp').append $('<div class="inputLine"/>').text '>>> ' + inputLine
+        try
+          switch command
+            when ''
+              $('#outp').append $('<div class="result"/>').text repr exec uCode, ctx
+            when '.t'
               tokenStream = tokenize uCode
-              """
+              $('#outp').append $('<div class="tokens"/>').text """
                 Tokens for #{JSON.stringify uCode}:
                   type      value               startLine:startCol-endLine:endCol
                   ----      -----               ---------------------------------
@@ -34,21 +42,20 @@ jQuery ($) ->
                     ).join '\n  '
                   }
               """
-            else if /^\.a\b/.test uCode
-              uCode = uCode[3...]
-              "AST for #{JSON.stringify uCode}:\n#{
-                renderAST parse uCode
-              }"
-            else if /^\.c\b/.test uCode
-              uCode = uCode[3...]
-              "Compiled JavaScript for #{JSON.stringify uCode}:\n#{
-                compile uCode
-              }"
+            when '.a'
+              $('#outp').append $('<div class="ast"/>').text """
+                AST for #{JSON.stringify uCode}:
+                #{renderAST parse uCode}
+              """
+            when '.c'
+              $('#outp').append $('<div class="js"/>').text """
+                Compiled JavaScript for #{JSON.stringify uCode}:
+                #{compile uCode}
+              """
             else
-              repr exec uCode
-          catch e
-            e.stack
-        )
+              $('#outp').append $('<div class="error"/>').text 'Unrecognised command, ' + repr command
+        catch e
+          $('#outp').append $('<div class="error"/>').text e.stack
         $(window).scrollTop $(document).height()
 
 renderAST = (node, indent = '') ->
@@ -79,7 +86,7 @@ repr = (x) ->
   else if typeof x is 'number'
     if x is Infinity then '$pinf'
     else if x is -Infinity then '$ninf'
-    else '' + x
+    else ('' + x).replace /-/g, '~'
   else if typeof x is 'boolean' then '$' + 'ft'[+x]
   else if typeof x is 'function' then '@{...}'
   else if typeof x is 'string'

@@ -4,12 +4,13 @@ _ = require '../lib/underscore'
 stdlib = require './stdlib'
 helpers = require './helpers'
 
-@exec = (uCode) ->
-  (new Function """
-    var ctx     = arguments[0],
-        helpers = arguments[1];
-    return #{compile uCode};
-  """) Object.create(stdlib), helpers
+@exec = (uCode, ctx) ->
+  ctx ?= Object.create stdlib
+  (eval """
+    (function (ctx, helpers) {
+        return #{compile uCode};
+    })
+  """) ctx, helpers
 
 @compile = compile = (uCode) ->
   ast = parse uCode

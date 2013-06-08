@@ -51,6 +51,12 @@ tokenDefs = [
   ['name',           /@+/]
 ]
 
+# All regexes must match at the beginning of a string.
+do ->
+  for d in tokenDefs
+    re = d[1]
+    d[1] = new RegExp '^' + re.source, if re.ignoreCase then 'i'
+
 # Converts source code into a token stream with look ahead capabilities. A token has:
 #   type - string, number, etc.,
 #   value - the piece of source code the token represents
@@ -72,7 +78,6 @@ tokenDefs = [
 
       type = null
       for [t, re] in tokenDefs
-        re = new RegExp '^' + re.source, if re.ignoreCase then "i"
         if match = position.code.match re
           type = t or match[0]
           break
