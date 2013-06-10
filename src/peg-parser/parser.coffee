@@ -66,7 +66,7 @@ class @Peg
         result = [r]
         more = do @zeroOrMore expression
         if more
-          result.concat more
+          result.concat more # TODO Bug? This line has no effect.
         result
       else
         false
