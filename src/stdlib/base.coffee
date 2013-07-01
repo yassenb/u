@@ -1,3 +1,5 @@
+_ = require '../../lib/underscore'
+
 # polymorphic(...) combines a list of functions into a single function that
 # does type dispatching.  For instance
 #     polymorphic(
@@ -20,10 +22,9 @@
 # If coercion fails, we try the next polymorphic variant.
 # If all variants fail, we throw an error.
 @polymorphic = (fs...) ->
-  signatures =
-    for f in fs
-      paramNames = ('' + f).replace(/^\s*function\s*\(([^\)]*)\)[^]+$/, '$1').split /\s*,\s*/
-      (for t in paramNames then t[0]).join ''
+  signatures = _(fs).map (f) ->
+    paramNames = f.toString().match(/^\s*function\s*\(([^\)]*)\)/)[1].split /\s*,\s*/
+    _(paramNames).map((param) -> param[0]).join ''
   (a) ->
     for f, i in fs when (xs = coerce a, signatures[i]) then return f xs...
     throw Error """
