@@ -58,15 +58,6 @@ coerce = (a, ts) ->
   else
     throw Error 'Bad type signature, ' + JSON.stringify ts
 
-eq = (x, y) ->
-  if x is y # translates to JavaScript's "===", which is type-safe
-    true
-  else if x instanceof Array and y instanceof Array and x.length is y.length
-    for xi, i in x when not eq xi, y[i] then return false
-    true
-  else
-    false
-
 @['+'] = polymorphic(
 
   # 1 + 1          ->   2
@@ -117,7 +108,7 @@ eq = (x, y) ->
   (q1, q2) ->
     r = q1[...] # make a copy
     for x in q2
-      for y, j in r when eq x, y
+      for y, j in r when _(x).isEqual y
         r.splice j, 1 # remove the j-th element from r
         break
     r
@@ -330,7 +321,7 @@ eq = (x, y) ->
   # '(123)=[1;2;3]              ->   $f
   # TODO does $t equal 1?
   # TODO how do we treat NaN-s?
-  (x1, x2) -> eq x1, x2
+  (x1, x2) -> _(x1).isEqual x2
 )
 
 @['<>'] = polymorphic(
@@ -343,7 +334,7 @@ eq = (x, y) ->
   # [1;[2;'3]]<>[1;[2;'3]]       ->   $f
   # [1;2;3]<>[1;'(2,3)]          ->   $t
   # '(123)<>[1;2;3]              ->   $t
-  (x1, x2) -> not eq x1, x2
+  (x1, x2) -> not _(x1).isEqual x2
 )
 
 @['>='] = polymorphic(
@@ -440,7 +431,7 @@ eq = (x, y) ->
     r = q1[...]
     for x in q2
       found = false
-      for y in r when eq y, x
+      for y in r when _(y).isEqual x
         found = true
         break
       if not found
@@ -486,7 +477,7 @@ eq = (x, y) ->
   (q1, q2) ->
     r = []
     for x in q1
-      for y in q2 when eq x, y
+      for y in q2 when _(x).isEqual y
         r.push x
         break
     r
