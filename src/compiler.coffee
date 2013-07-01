@@ -1,7 +1,7 @@
 _ = require '../lib/underscore'
 
 {parse} = require './peg-parser/u-grammar'
-stdlib = require './stdlib'
+stdlib = require './stdlib/all'
 helpers = require './helpers'
 
 @exec = (uCode, ctx) ->
