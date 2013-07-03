@@ -56,3 +56,21 @@ coerce = (a, ts) ->
       else throw Error 'Bad type symbol, ' + JSON.stringify ts
   else
     throw Error 'Bad type signature, ' + JSON.stringify ts
+
+# When given a sequence `q' in case the sequence is actually a string (an array of characters) returns the string,
+# otherwise preservers `q'. `original' is the collection that q was obtained from, used in order to return the proper
+# type of result when q is empty - either '' or []
+@qToString = (q, original) ->
+  isChar = (c) ->
+    typeof c is 'string' and c.length is 1
+
+  return q unless q instanceof Array
+
+  result = if (_(q).every isChar) then q.join('') else q
+  if result.length > 0
+    result
+  else
+    original[...0] # gives '' if original is a string and [] if original is a list
+
+@uEqual = (x, y) ->
+  _(x).isEqual y
