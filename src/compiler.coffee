@@ -332,6 +332,7 @@ renderPatternJS = (pattern, valueJS) ->
         # x\(y\z)==[1;2;3]; [x;y;z]   ->   [1;2;[3]]
         # x\y\z==[[1;2];3]; [x;y;z]   ->   [1;[2];[3]]
         # x\y==[1]; [x;y]             ->   [1;[]]
+        # TODO x\y==[] should throw
         """
           #{valueJS} instanceof Array &&
           #{valueJS}.length &&
@@ -342,6 +343,8 @@ renderPatternJS = (pattern, valueJS) ->
         # x/y==[1;2]; [x;y]         ->   [[1];2]
         # x/y/z==[1;2;3]; [x;y;z]   ->   [[1];2;3]
         # x\y/z==[1;2;3]; [x;y;z]   ->   [1;[2];3]
+        # x/y==[1]; [x;y]           ->   [[];1]
+        # TODO x/y==[] should throw
         """
           #{valueJS} instanceof Array &&
           #{valueJS}.length &&
