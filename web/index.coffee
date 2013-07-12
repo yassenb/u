@@ -3,7 +3,7 @@ _ = require 'lib/underscore'
 {parse} = require 'src/peg-parser/u-grammar'
 {tokenize} = require 'src/lexer'
 {compile, exec} = require 'src/compiler'
-stdlib = require 'src/stdlib'
+stdlib = require 'src/stdlib/all'
 
 jQuery ($) ->
 
