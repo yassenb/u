@@ -23,21 +23,18 @@ renderJS = (node) ->
   if node is '_'
     throw Error 'Invalid currying'
 
-  keys = _(node).keys()
-  unless keys.length is 1
-    throw Error 'Compiler error'
-  exprType = keys[0]
-
-  node = node[exprType]
-  switch exprType
-    when 'program'
+  switch node.type
+    when 'programBody'
       # 1;2;3   ->   3
-      statements = _(node).map (child) ->
+      statements = _(node.value).map (child) ->
         "(#{renderJS child})"
       "(#{statements.join ','})"
 
+    when 'value'
+      renderJS node.value
+
     when 'const'
-      renderJS node
+      renderJS node.value
 
     when 'number'
       # 5           ->   5
@@ -45,11 +42,11 @@ renderJS = (node) ->
       # 0-5         ->   ~5
       # 0.1         ->   0.1
       # 0.1 + 0.9   ->   1
-      node.replace /^~/, '-'
+      node.value.replace /^~/, '-'
 
     when 'string'
       JSON.stringify(
-        if /^'\(/.test node
+        if /^'\(/.test node.value
           # '(')rock''n'roll)   ->   '(')rock''n'roll)
           # '(()                ->   '(()
           # '('))               ->   ')
@@ -57,18 +54,18 @@ renderJS = (node) ->
           # '(abc'
           # ...def)             ->   "abcdef
           h = { n: '\n', t: '\t', ')': ')', "'": "'", '\n': '' }
-          node[2...-1].replace /'[nt\)'\n]/g, (x) -> h[x[1]]
+          node.value[2...-1].replace /'[nt\)'\n]/g, (x) -> h[x[1]]
         else
           # 'a                  ->   '(a)
           # "Toledo             ->   '(Toledo)
-          node[1...]
+          node.value[1...]
       )
 
     when 'name'
-      nameToJS node
+      nameToJS node.value
 
     when 'dollarConstant'
-      switch node
+      switch node.value
         when '$'     then 'null'
         when '$f'    then 'false'
         when '$t'    then 'true'
@@ -79,36 +76,36 @@ renderJS = (node) ->
         when '$np'   then throw Error '$np is not implemented' # TODO
         else
           # $pinfinity   ->   error 'Unrecognised constant'
-          throw Error 'Unrecognised constant, ' + JSON.stringify node
+          throw Error 'Unrecognised constant, ' + JSON.stringify node.value
 
     when 'sequence'
       # + . [1;2]   ->   3
-      "[#{_(node.elements).map(renderJS).join ','}]"
+      "[#{_(node.value).map(renderJS).join ','}]"
 
     when 'expr'
       # 2 + 3 + 4             ->   9
       # 2 + 3 @{ x :: 7 } 4   ->   7
 
       # Initial "_" must be treated differently from subsequent "_"-s.
-      if node[0].argument is '_'
-        if node.length is 1
+      if node.value[0].argument.value is '_'
+        if node.value.length is 1
           throw Error 'A single underscore cannot be used as an expression.'
 
-        if node[1].argument is '_'
+        if node.value[1].argument.value is '_'
           # _+_   ->   +
-          r = renderJS node[1].operator # currying on both sides returns the function itself
+          r = renderJS node.value[1].operator # currying on both sides returns the function itself
         else
           # (_+1).2   ->   3
-          r = "helpers.curryRight(#{renderJS node[1].operator},#{renderJS node[1].argument})"
+          r = "helpers.curryRight(#{renderJS node.value[1].operator},#{renderJS node.value[1].argument})"
 
         i = 2
       else
-        r = renderJS node[0].argument
+        r = renderJS node.value[0].argument
         i = 1
 
-      _(node[i..]).reduce(
+      _(node.value[i..]).reduce(
         (r, expr) ->
-          if expr.argument is '_'
+          if expr.argument.value is '_'
             # (1+_).2   ->   3
             "helpers.curryLeft(#{renderJS expr.operator}, #{r})"
           else
@@ -117,18 +114,18 @@ renderJS = (node) ->
       )
 
     when 'def'
-      if node.assignment
-        renderJS node
+      if node.value.assignment
+        renderJS node.value.assignment
       # {a == b ++ b == 6}; a   ->   6
       # b == 7; {a == b ++ b == 6}; [a;b]   ->   [6;7]
       # {_\(x\(y\(z\[[z1;z2]]))) == a ++ a == [0;1;2;3;[4;5]]}; [x;y;z;z1;z2]   ->   [1;2;3;4;5]
       else
-        assignments = node.assignments
+        assignments = node.value.assignments
         namesToExport = assignmentNames assignments
         """
           helpers.assignmentsWithLocal(ctx,
             function (ctx) {
-              #{renderJS node.local};
+              #{renderJS node.value.local};
               #{_(assignments).map(renderJS).join ';\n'};
             },
             [#{_(namesToExport).map(JSON.stringify).join(',')}])
@@ -137,19 +134,17 @@ renderJS = (node) ->
     when 'assignment'
       # a==1; a             ->   1
       # a==2+1; a           ->   3
-      renderPatternJS node.pattern, renderJS _(node).pick('expr')
+      renderPatternJS node.value.pattern.value, renderJS node.value.expr
 
-    when 'defs'
-      _(node).map(renderJS).join ';\n'
+    when 'local'
+      _(node.value).map(renderJS).join ';\n'
 
     when 'closure'
-      renderJS node
+      renderJS node.value
 
     when 'parametric'
       # {a + b ++ a == 6; b == 5}   ->   11
-      # TODO it's better if all .pick()-s are removed and the things they pick - named to avoid reconstructing parts of
-      # the AST in the compiler
-      withLocal node.local, renderJS _(node).pick('expr')
+      withLocal node.value.local, renderJS node.value.expr
 
     when 'conditional'
       # ?{1::2;3}   ->   2
@@ -158,13 +153,13 @@ renderJS = (node) ->
       # TODO negative test cases
       # ?{$f::2;$t::3;4}   ->   3
       # ?{x::2;y::3;4 ++ x==$f; y==$t}   ->   3
-      r = _(node.tests).reduce(
+      r = _(node.value.tests).reduce(
         (r, test) ->
-          r + "(#{renderJS test.condition})?(#{renderJS _(test).pick 'expr'}):"
+          r + "(#{renderJS test.condition})?(#{renderJS test.expr}):"
         ''
       )
-      r += if node.else then renderJS node.else else 'null'
-      withLocal node.local, r
+      r += if node.value.else then renderJS node.value.else else 'null'
+      withLocal node.value.local, r
 
     when 'function'
       # @{:: 123} . 3                      ->   123
@@ -185,7 +180,7 @@ renderJS = (node) ->
       # each clause should be evaluated in its own context
       # x == 6; @{x (x > 5) :: 5; _ ($t) :: x} . 3   ->   6
       resultJS = ''
-      for { clause: { functionlhs: { pattern, guard }, body } }, i in node.clauses
+      for { functionlhs: { value: { pattern, guard } }, body }, i in _(node.value.clauses).pluck 'value'
         # A missing pattern or guard defaults to that from the previous clause.
         # @{x (x>5) :: 1;
         # ... (x>4) :: 2;
@@ -198,20 +193,20 @@ renderJS = (node) ->
         # ...   :: ;
         # ...   :: 1;
         # ...   :: 2} . 4   ->   1
-        resultingPattern = pattern or resultingPattern or node.clauses[i - 1]?.clause.functionlhs.pattern
-        resultingGuard = guard or resultingGuard or node.clauses[i - 1]?.clause.functionlhs.guard
+        resultingPattern = pattern or resultingPattern or node.value.clauses[i - 1]?.value.functionlhs.pattern
+        resultingGuard = guard or resultingGuard or node.value.clauses[i - 1]?.value.functionlhs.guard
 
         # A missing body defaults to the next clause's body.
         unless resultingBody = body or resultingBody
-          for clause in node.clauses[i+1..]
-            if body = clause.clause.body
+          for clause in node.value.clauses[i+1..]
+            if body = clause.value.body
               resultingBody = body
               break
 
         resultJS += """
           helpers.withNewContext(ctx, function (ctx) {
-              var enter = (#{if resultingPattern? then renderPatternJS resultingPattern, 'arg' else 'true'}) &&
-                          (#{if resultingGuard? then renderJS resultingGuard else 'true'});
+              var enter = (#{if resultingPattern? then renderPatternJS resultingPattern.value, 'arg' else 'true'}) &&
+                          (#{if resultingGuard? then renderJS resultingGuard.value else 'true'});
               if (enter) {
                   body = (#{if resultingBody? then renderJS resultingBody else 'null'});
               }
@@ -228,18 +223,18 @@ renderJS = (node) ->
         })
       """
 
-      if node.local
+      if node.value.local
         resultJS = """
           helpers.withNewContext(ctx, function (ctx) {
             ctx._function = #{resultJS};
-            #{renderJS node.local};
+            #{renderJS node.value.local};
             return ctx._function;
           })
         """
 
       resultJS
     else
-      throw Error 'Compiler error: Unrecognised node type, ' + exprType
+      throw Error 'Compiler error: Unrecognised node type, ' + node.type
 
 withLocal = (local, expression) ->
   if local?
@@ -280,38 +275,40 @@ nameToJS = (name) ->
 # renderPatternJS() builds a JavaScript expression that evaluates to true when the pattern is matched. As a side effect
 # during its evaluation, the expression may associate names with values in the current context.
 renderPatternJS = (pattern, valueJS) ->
-  if pattern.expr
-    return renderPatternJS pattern.expr, valueJS
+  if pattern.type is 'expr'
+    return renderPatternJS pattern.value, valueJS
 
   if pattern.length is 1
-    value = pattern[0].argument
+    value = pattern[0].argument.value
     if value is '_'
       # _==1; $   ->   $
       'true'
-    else if konst = value.const
-      if name = konst.name
+    else if value.type is 'const'
+      value = value.value
+      if value.type is 'name'
         # a==1; a+a   ->   2
-        "#{nameToJS name}=(#{valueJS}),true"
+        "#{nameToJS value.value}=(#{valueJS}),true"
       else
         # [a;1]==[2;1]; a      ->   2
         # ['a;a]==['a;'b]; a   ->   'b
         # [$t;$f;$pinf;$;a]==[$t;$f;$pinf;$;[1;2;3]]; a   ->   [1;2;3]
-        "#{valueJS}===(#{renderJS konst})"
-    else if value.expr
+        "#{valueJS}===(#{renderJS value})"
+    else if value.type is 'expr'
       renderPatternJS value, valueJS
     # The rest of the value options use valueJS at least twice in the compiled code so we wrap the code in a closure to
     # prevent double computation.
     else if valueJS isnt 'v'
       wrapInClosure pattern, valueJS
-    else if seq = value.sequence?.elements
+    else if value.type is 'sequence'
       # [x;[y;z]]==[1;[2;3]]; x+y+z   ->   6
       # @{[] :: $t; _ :: $f} . []     ->   $t
-      _(seq).reduce(
+      sequence = value.value
+      _(sequence).reduce(
         (r, elem, i) ->
           r + " && (#{renderPatternJS elem, "#{valueJS}[#{i}]"})"
-        "#{valueJS} instanceof Array && #{valueJS}.length===#{seq.length}"
+        "#{valueJS} instanceof Array && #{valueJS}.length===#{sequence.length}"
       )
-    else  # value.closure
+    else  # value.type is 'closure'
       # TODO test
       throw Error 'Invalid pattern, pattern can\'t be a closure'
 
@@ -322,11 +319,12 @@ renderPatternJS = (pattern, valueJS) ->
 
     # Apply only the last operation and invoke renderPatternJS recursively.
     pattern = _(pattern)
-    operator = pattern.last().operator
+    operator = pattern.last().operator.value
     leftArg = pattern.initial()
-    rightArg = [_(pattern.last()).pick('argument')]
+    rightArg = [pattern.last()]
 
-    switch operator.const?.name
+    operatorName = operator.type is 'const' and operator.value.type is 'name' and operator.value.value
+    switch operatorName
       when '\\'
         # x\y==[1;2;3]; [x;y]         ->   [1;[2;3]]
         # x\(y\z)==[1;2;3]; [x;y;z]   ->   [1;2;[3]]
@@ -366,16 +364,15 @@ wrapInClosure = (pattern, valueJS) ->
 # TODO unit test
 assignmentNames = (assignments) ->
   walkExpr = (expr) ->
-    _(expr).map (subExpr) ->
-      arg = subExpr.argument
-      if name = arg.const?.name
-        name
-      else if arg.sequence?
-        _(arg.sequence.elements).map (e) ->
-          walkExpr e.expr
-      else if arg.expr?
-        walkExpr arg.expr
+    _(expr.value).map (subExpr) ->
+      arg = subExpr.argument.value
+      if arg.type is 'const' and arg.value.type is 'name'
+        arg.value.value
+      else if arg.type is 'sequence'
+        _(arg.value).map walkExpr
+      else if arg.type is 'expr'
+        walkExpr arg
 
   exprs = _(assignments).map (assignment) ->
-    assignment.assignment.pattern.expr
+    assignment.value.pattern.value
   _(_(exprs).map(walkExpr)).flatten()

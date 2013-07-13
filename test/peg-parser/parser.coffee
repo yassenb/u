@@ -48,38 +48,38 @@ describe 'Peg', ->
           var: 't1'
         }
       assertParse grammar, [
-        [[['t1', 'x']], { var: 'x' }]
-      ]
-
-    it 'allows aliasing ref nodes in the constructed AST', ->
-      grammar = class extends TestGrammar
-        getTestGrammar: -> {
-          start: @ref 'def', 'var'
-          def: 't1'
-        }
-      assertParse grammar, [
-        [[['t1', 'x']], { var: 'x' }]
+        [[['t1', 'x']], { type: 'var', value: 'x' }]
       ]
 
   describe '#seq()', ->
-    it 'constructs an AST node with only the explicitly named and ref parts in a hash', ->
+    it 'constructs a hash with only the explicitly named parts', ->
       grammar = class extends TestGrammar
         getTestGrammar: -> {
           start: @seq @ref('def'), '=', ['val', 't2'], @zeroOrMore(';')
           def: 't1'
         }
       assertParse grammar, [
-        [[['t1', 'x'], ['=', 'equal'], ['t2', 6], [';', 'column']], { def: 'x', val: 6 }]
+        [[['t1', 'x'], ['=', 'equal'], ['t2', 6], [';', 'column']], { val: 6 }]
       ]
 
-    it 'constructs an empty node when there are no named elements in the sequence', ->
+    it 'constructs an AST node when there is only one named element in the sequence with the name \'\'', ->
+      grammar = class extends TestGrammar
+        getTestGrammar: -> {
+          start: @seq ['', @ref('var')]
+          var: 't1'
+        }
+      assertParse grammar, [
+        [[['t1', 'x']], { type: 'var', value: 'x' }]
+      ]
+
+    it 'constructs an empty hash when there are no named elements in the sequence', ->
       grammar = class extends TestGrammar
         getTestGrammar: -> {
           start: @ref 'def'
           def: @seq 't1', '=', 't2', ';'
         }
       assertParse grammar, [
-        [[['t1', 'x'], ['=', 'equal'], ['t2', 6], [';', 'column']], { def: {} }]
+        [[['t1', 'x'], ['=', 'equal'], ['t2', 6], [';', 'column']], { type: 'def', value: {} }]
       ]
 
     it 'parses only when the whole sequence matches', ->
@@ -90,8 +90,8 @@ describe 'Peg', ->
           alt2: @seq 'a', 'b', 'd'
         }
       assertParse grammar, [
-        [[['a', ''], ['b', ''], ['c', '']], { alt1: {} }]
-        [[['a', ''], ['b', ''], ['d', '']], { alt2: {} }]
+        [[['a', ''], ['b', ''], ['c', '']], { type: 'alt1', value: {} }]
+        [[['a', ''], ['b', ''], ['d', '']], { type: 'alt2', value: {} }]
         [[['a', ''], ['b', ''], ['e', '']], false]
       ]
 
@@ -109,11 +109,11 @@ describe 'Peg', ->
     it 'produces a node even when it doesn\'t match', ->
       grammar = class extends TestGrammar
         getTestGrammar: -> {
-          start: @seq 't1', @ref('opt'), 't1'
+          start: @seq 't1', ['opt', @ref('opt')], 't1'
           opt: @optional('t2')
         }
       assertParse grammar, [
-        [[['t1', ''], ['t1', '']], { opt: null }]
+        [[['t1', ''], ['t1', '']], { opt: { type: 'opt', value: null } }]
       ]
 
   describe '#or()', ->
@@ -123,8 +123,8 @@ describe 'Peg', ->
           start: @or 't1', 't2'
         }
       assertParse grammar, [
-        [[['t1', '']], {}]
-        [[['t2', '']], {}]
+        [[['t1', 5]], 5]
+        [[['t2', 6]], 6]
       ]
 
     it 'provides an ordered choice', ->

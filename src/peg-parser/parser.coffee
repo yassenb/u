@@ -2,24 +2,23 @@ _ = require '../../lib/underscore'
 
 {tokenize} = require '../lexer'
 
+class Node
+  constructor: (@type, @value) ->
+
 class @Peg
   constructor: ->
     @grammar = @getGrammar()
 
   parse: (code) ->
     @tokenStream = tokenize code
-    do @seq @grammar.start, 'eof'
+    result = do @seq ['start', @grammar.start], 'eof'
+    if result isnt false then result.start else result
 
-  node = (key, value) ->
-    result = {}
-    result[key] = if value is true then null else value
-    result
-
-  ref: (rule, alias = null) ->
+  ref: (rule) ->
     =>
       parsed = @parseExpression @grammar.rules[rule]
       if parsed isnt false
-        node(alias or rule, parsed)
+        new Node(rule, parsed)
       else
         false
 
@@ -31,14 +30,19 @@ class @Peg
       for expression in expressions
         parsed = @parseExpression expression
         if parsed isnt false
-          if parsed instanceof Object and parsed not instanceof Array
+          if parsed instanceof Object and
+              parsed not instanceof Node and
+              parsed not instanceof Array
             result.push parsed
         else
           result = false
           @tokenStream.rollback position
           break
       if result
-        _.extend {}, result...
+        if result.length is 1 and result[0]['']?
+          result[0]['']
+        else
+          _.extend {}, result...
       else
         false
 
@@ -50,7 +54,7 @@ class @Peg
         parsed
       else
         @tokenStream.rollback position
-        true
+        null
 
   or: (expression1, expression2) ->
     =>
@@ -97,7 +101,9 @@ class @Peg
     else if expression instanceof Array
       value = @parseExpression expression[1]
       if value isnt false
-        node expression[0], value
+        result = {}
+        result[expression[0]] = value
+        result
       else
         false
     else
