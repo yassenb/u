@@ -45,11 +45,9 @@ class UGrammar extends Peg
 
   someWithSep: (rule, separator, zeroValue) ->
     =>
-      parsed = @getParseResult rule
+      parsed = do @seq rule
       if parsed
-        if parsed['']?
-          parsed = parsed['']
-        [parsed].concat @zeroOrMore(@seq separator, rule)()
+        [parsed].concat do @zeroOrMore(@seq separator, rule)
       else
         zeroValue
 
