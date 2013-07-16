@@ -22,8 +22,7 @@ class @Peg
       else
         false
 
-  seq: ->
-    expressions = arguments
+  seq: (expressions...) ->
     =>
       result = []
       position = @tokenStream.getPosition()
