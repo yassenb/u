@@ -11,18 +11,21 @@ _ = require '../lib/underscore'
 #
 #   * '' means that the token's type should be the same as its value
 tokenDefs = [
-  ['-',              /\s+/]          # whitespace
-  ['-',              /"[^a-z\{].*/i] # line comment
-  ['-',              /#!.*/]         # line comment
-  ['-',              ///             # block comment
-                       "\{.*
-                       (?: \s* (?: " | "[^\}].* | [^"].* ) [\n\r]+ )*
-                       "\}.*         # TODO block comments can be nested
-                     ///]
+  ['-',              ///
+                          \s+          # whitespace
+                        | "[^a-z\{].*  # line comment
+                        | \#!.*        # line comment
+                        |              # block comment
+                           "\{.*
+                           (?: \s* (?: " | "[^\}].* | [^"].* ) [\n\r]+ )*
+                           "\}.*       # TODO block comments can be nested
+                     ///i]
   ['number',         /~?\d+(?:\.\d+)?/]
-  ['string',         /'\(('[^]|[^'\)])*\)/]
-  ['string',         /'[^\(]/]
-  ['string',         /"[a-z][a-z0-9]*/i]
+  ['string',         ///
+                          '\(('[^]|[^'\)])*\)
+                        | '[^\(]
+                        | "[a-z][a-z0-9]*
+                     ///i]
   ['',               ///
                            ==
                          | \?\{
@@ -32,23 +35,12 @@ tokenDefs = [
                          | [\(\)\[\]\{\};_]
                      ///]
   ['dollarConstant', /\$[a-z]*/i]
-  ['name',           /[a-z][a-z0-9]*/i]
   ['name',           ///
-                           <:
-                         | >:
-                         | \|:
-                         | =>
-                         | \|\|
-                         | <=
-                         | >=
-                         | <>
-                         | ,,
-                         | >>
-                         | <<
-                         | %%
-                     ///]
-  ['name',           /[\+\-\*:\^=<>\/\\\.\#!%~\|,&]/]
-  ['name',           /@+/]
+                          [a-z][a-z0-9]*
+                         | <: | >: | \|: | => | \|\| | <= | >= | <> | ,, | >> | << | %%
+                         | [\+\-\*:\^=<>\/\\\.\#!%~\|,&]
+                         | @+
+                     ///i]
 ]
 
 # All regexes must match at the beginning of a string.
