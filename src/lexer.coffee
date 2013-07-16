@@ -13,7 +13,7 @@ _ = require '../lib/underscore'
 tokenDefs = [
   ['-',              /\s+/]          # whitespace
   ['-',              /"[^a-z\{].*/i] # line comment
-  ['-',              /^#!.*/i]       # line comment
+  ['-',              /#!.*/]         # line comment
   ['-',              ///             # block comment
                        "\{.*
                        (?: \s* (?: " | "[^\}].* | [^"].* ) [\n\r]+ )*
@@ -23,17 +23,17 @@ tokenDefs = [
   ['string',         /'\(('[^]|[^'\)])*\)/]
   ['string',         /'[^\(]/]
   ['string',         /"[a-z][a-z0-9]*/i]
-  ['',               ///(?:
+  ['',               ///
                            ==
                          | \?\{
                          | @\{
                          | ::
                          | \+\+
                          | [\(\)\[\]\{\};_]
-                     )///]
+                     ///]
   ['dollarConstant', /\$[a-z]*/i]
   ['name',           /[a-z][a-z0-9]*/i]
-  ['name',           ///(?:
+  ['name',           ///
                            <:
                          | >:
                          | \|:
@@ -46,7 +46,7 @@ tokenDefs = [
                          | >>
                          | <<
                          | %%
-                     )///]
+                     ///]
   ['name',           /[\+\-\*:\^=<>\/\\\.\#!%~\|,&]/]
   ['name',           /@+/]
 ]
@@ -55,7 +55,7 @@ tokenDefs = [
 do ->
   for d in tokenDefs
     re = d[1]
-    d[1] = new RegExp '^' + re.source, if re.ignoreCase then 'i'
+    d[1] = new RegExp "^(?:#{re.source})", if re.ignoreCase then 'i'
 
 # Converts source code into a token stream with look ahead capabilities. A token has:
 #   type - string, number, etc.,
