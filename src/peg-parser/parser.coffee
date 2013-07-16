@@ -56,12 +56,12 @@ class @Peg
         @tokenStream.rollback position
         null
 
-  or: (expression1, expression2) ->
+  or: (expressions...) ->
     =>
-      result = @getParseResult expression1
-      if result is false
-        result = @getParseResult expression2
-      result
+      for e in expressions
+        if (result = @getParseResult e) isnt false
+          return result
+      false
 
   oneOrMore: (expression) ->
     =>
