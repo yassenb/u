@@ -54,39 +54,38 @@ do ->
 #   value - the piece of source code the token represents
 #   startLine, startCol, endLine, endCol - the position of the token in the source file
 @tokenize = (code, opts = {}) ->
-  position = { line: 1, col: 1, code: code }
-
+  line = col = 1
   tokens = []
-  while position.code
-    startLine = position.line
-    startCol = position.col
+  while code
+    startLine = line
+    startCol = col
 
     type = null
     for [t, re] in tokenDefs
-      if match = position.code.match re
+      if match = code.match re
         type = t or match[0]
         break
     if not type
-      throw Error "Syntax error: unrecognized token at #{position.line}:#{position.col} " + position.code,
+      throw Error "Syntax error: unrecognized token at #{line}:#{col} " + code,
         file: opts.file
-        line: position.line
-        col: position.col
+        line: line
+        col: col
         code: opts.code
 
     match = match[0]
     lines = match.split '\n'
-    position.line += lines.length - 1
-    position.col = (if lines.length is 1 then position.col else 1) + _(lines).last().length
-    position.code = position.code.substr match.length
+    line += lines.length - 1
+    col = (if lines.length is 1 then col else 1) + _(lines).last().length
+    code = code.substr match.length
     if type isnt '-'
       tokens.push {
         type, value: match,
-        startLine, startCol, endLine: position.line, endCol: position.col - 1
+        startLine, startCol, endLine: line, endCol: col - 1
       }
 
   tokens.push {
     type: 'eof', value: '',
-    startLine: position.line, startCol: position.col, endLine: position.line, endCol: position.col
+    startLine: line, startCol: col, endLine: line, endCol: col
   }
 
 
