@@ -12,9 +12,9 @@ class UGrammar extends Peg
       assignment: @seq ['pattern', @ref 'pattern'], '==', ['expr', @ref 'expr']
       expr: @oneOrMoreWithSep ['argument', @ref 'value'], ['operator', @ref 'value']
       value: @or @ref('number'), @ref('string'), @ref('name'), @ref('dollarConstant'),
-                 '_', @ref('sequence'), @seq('(', ['', @ref 'expr'], ')'), @ref('closure')
+                 @ref('parametric'), @ref('conditional'), @ref('function'),
+                 '_', @ref('sequence'), @seq('(', ['', @ref 'expr'], ')'),
       sequence: @seq '[', ['', @zeroOrMoreWithSep(['', @ref 'expr'], ';')], ']'
-      closure: @or @ref('parametric'), @ref('conditional'), @ref('function')
       parametric: @seq '{', ['expr', @ref 'expr'], ['local', @ref 'local'], '}'
       conditional: @seq '?{',
         ['tests', @oneOrMoreWithSep(['', @seq(['condition', @ref 'expr'], '::', ['expr', @ref 'expr'])], ';')],

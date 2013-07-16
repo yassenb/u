@@ -136,9 +136,6 @@ renderJS = (node) ->
     when 'local'
       _(node.value).map(renderJS).join ';\n'
 
-    when 'closure'
-      renderJS node.value
-
     when 'parametric'
       # {a + b ++ a == 6; b == 5}   ->   11
       withLocal node.value.local, renderJS node.value.expr
@@ -303,9 +300,9 @@ renderPatternJS = (pattern, valueJS) ->
           r + " && (#{renderPatternJS elem, "#{valueJS}[#{i}]"})"
         "#{valueJS} instanceof Array && #{valueJS}.length===#{sequence.length}"
       )
-    else  # value.type is 'closure'
+    else
       # TODO test
-      throw Error 'Invalid pattern, pattern can\'t be a closure'
+      throw Error 'Invalid pattern'
 
   else
     # See the note about the call to wrapInClosure above
