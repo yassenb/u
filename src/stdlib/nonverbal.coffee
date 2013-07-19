@@ -75,7 +75,7 @@ _ = require '../../lib/underscore'
     if i < 0
       throw Error 'Multiplier for sequence or string must be non-negative.'
     r = []
-    _(i).times -> r = r.concat _(q).toArray()
+    _(i).times -> r.push _(q).toArray()...
     qToString r, q
 )
 
