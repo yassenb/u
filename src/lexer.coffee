@@ -56,7 +56,7 @@ do ->
 @tokenize = (code, opts = {}) ->
   line = col = 1
   tokens = []
-  while code
+  while code isnt ''
     startLine = line
     startCol = col
 
@@ -65,7 +65,7 @@ do ->
       if match = code.match re
         type = t or match[0]
         break
-    if not type
+    unless type
       throw Error "Syntax error: unrecognized token at #{line}:#{col} " + code,
         file: opts.file
         line: line
@@ -88,20 +88,18 @@ do ->
     startLine: line, startCol: col, endLine: line, endCol: col
   }
 
-
-
-  # What follows is the result from tokenize(), an iterator object of the tokens
-
   i = 0
 
-  # get the next token
-  next: ->
-    tokens[i++]
+  {
+    # get the next token
+    next: ->
+      tokens[i++]
 
-  # returns the stream to the state of the call to `getPosition()' by which `pos' was obtained
-  rollback: (pos) ->
-    i = pos
+    # returns the stream to the state of the call to `getPosition()' by which `pos' was obtained
+    rollback: (pos) ->
+      i = pos
 
-  # returns a position - something you can pass to `rollback(pos)' to restore to that position in the stream
-  getPosition: ->
-    i
+    # returns a position - something you can pass to `rollback(pos)' to restore to that position in the stream
+    getPosition: ->
+      i
+  }
