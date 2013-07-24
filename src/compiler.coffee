@@ -33,6 +33,9 @@ renderJS = (node) ->
     when 'value'
       renderJS node.value
 
+    when 'const'
+      renderJS node.value
+
     when 'number'
       # 5           ->   5
       # ~5          ->   0 - 5
@@ -135,6 +138,9 @@ renderJS = (node) ->
 
     when 'local'
       _(node.value).map(renderJS).join ';\n'
+
+    when 'closure'
+      renderJS node.value
 
     when 'parametric'
       # {a + b ++ a == 6; b == 5}   ->   11
@@ -277,14 +283,16 @@ renderPatternJS = (pattern, valueJS) ->
     if value is '_'
       # _==1; $   ->   $
       'true'
-    else if value.type is 'name'
-      # a==1; a+a   ->   2
-      "#{nameToJS value.value}=(#{valueJS}),true"
-    else if value.type in ['number', 'string', 'dollarConstant']
-      # [a;1]==[2;1]; a      ->   2
-      # ['a;a]==['a;'b]; a   ->   'b
-      # [$t;$f;$pinf;$;a]==[$t;$f;$pinf;$;[1;2;3]]; a   ->   [1;2;3]
-      "#{valueJS}===(#{renderJS value})"
+    else if value.type is 'const'
+      value = value.value
+      if value.type is 'name'
+        # a==1; a+a   ->   2
+        "#{nameToJS value.value}=(#{valueJS}),true"
+      else
+        # [a;1]==[2;1]; a      ->   2
+        # ['a;a]==['a;'b]; a   ->   'b
+        # [$t;$f;$pinf;$;a]==[$t;$f;$pinf;$;[1;2;3]]; a   ->   [1;2;3]
+        "#{valueJS}===(#{renderJS value})"
     else if value.type is 'expr'
       renderPatternJS value, valueJS
     # The rest of the value options use valueJS at least twice in the compiled code so we wrap the code in a closure to
@@ -315,7 +323,7 @@ renderPatternJS = (pattern, valueJS) ->
     leftArg = pattern.initial()
     rightArg = [pattern.last()]
 
-    operatorName = operator.type is 'name' and operator.value
+    operatorName = operator.type is 'const' and operator.value.type is 'name' and operator.value.value
     switch operatorName
       when '\\'
         # x\y==[1;2;3]; [x;y]         ->   [1;[2;3]]
@@ -358,8 +366,8 @@ assignmentNames = (assignments) ->
   walkExpr = (expr) ->
     _(expr.value).map (subExpr) ->
       arg = subExpr.argument.value
-      if arg.type is 'name'
-        arg.value
+      if arg.type is 'const' and arg.value.type is 'name'
+        arg.value.value
       else if arg.type is 'sequence'
         _(arg.value).map walkExpr
       else if arg.type is 'expr'

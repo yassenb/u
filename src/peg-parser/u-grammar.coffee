@@ -11,10 +11,9 @@ class UGrammar extends Peg
                     ['local', @ref('local')], '}')
       assignment: @seq ['pattern', @ref 'pattern'], '==', ['expr', @ref 'expr']
       expr: @oneOrMoreWithSep ['argument', @ref 'value'], ['operator', @ref 'value']
-      value: @or @ref('number'), @ref('string'), @ref('name'), @ref('dollarConstant'),
-                 @ref('parametric'), @ref('conditional'), @ref('function'),
-                 '_', @ref('sequence'), @seq('(', ['', @ref 'expr'], ')'),
+      value: @or @ref('const'), '_', @ref('sequence'), @seq('(', ['', @ref 'expr'], ')'), @ref('closure')
       sequence: @seq '[', ['', @zeroOrMoreWithSep(['', @ref 'expr'], ';')], ']'
+      closure: @or @ref('parametric'), @ref('conditional'), @ref('function')
       parametric: @seq '{', ['expr', @ref 'expr'], ['local', @ref 'local'], '}'
       conditional: @seq '?{',
         ['tests', @oneOrMoreWithSep(['', @seq(['condition', @ref 'expr'], '::', ['expr', @ref 'expr'])], ';')],
@@ -26,6 +25,7 @@ class UGrammar extends Peg
                        @seq(@optional(['pattern', @ref 'pattern']), @optional(['guard', @ref 'guard']))
       guard: @seq '(', ['', @ref 'expr'], ')'
       local: @seq '++', ['', @oneOrMoreWithSep(['', @ref 'def'], ';')]
+      const: @or @ref('number'), @ref('string'), @ref('name'), @ref('dollarConstant')
       number: 'number'
       string: 'string'
       name: 'name'
