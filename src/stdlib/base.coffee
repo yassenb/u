@@ -34,28 +34,31 @@ _ = require '../../lib/underscore'
       Function name: #{JSON.stringify arguments.callee.uName}
     """
 
+coerceHelper = (e, t) ->
+  switch t
+    when 'n' then if typeof e in ['number', 'boolean'] then [+e]
+    when 'i' then if typeof e in ['number', 'boolean'] and +e is ~~e then [+e]
+    when 'b' then if typeof e is 'boolean' then [e]
+    when 'q' then if e instanceof Array or typeof e is 'string' then [e]
+    when 's' then if typeof e is 'string' then [e]
+    when 'p' then undefined # TODO pictures
+    when 'f' then if typeof e is 'function' then [e]
+    when 'x' then [e]
+    else throw Error 'Bad type symbol, ' + JSON.stringify t
+
 # coerce(...) takes an object `a` (which could be an array) and a type signature `ts` (which is a sequence of type
 # initials) and tries to coerce `a` to the respective type or types.
 # It returns either undefined or an array of coerced values.
 coerce = (a, ts) ->
-  if ts.length is 2
-    if a instanceof Array and a.length is 2 and
-            (x = coerce a[0], ts[0]) and
-            (y = coerce a[1], ts[1])
-      x.concat y
-  else if ts.length is 1
-    switch ts
-      when 'n' then if typeof a in ['number', 'boolean'] then [+a]
-      when 'i' then if typeof a in ['number', 'boolean'] and +a is ~~a then [+a]
-      when 'b' then if typeof a is 'boolean' then [a]
-      when 'q' then if a instanceof Array or typeof a is 'string' then [a]
-      when 's' then if typeof a is 'string' then [a]
-      when 'p' then undefined # TODO pictures
-      when 'f' then if typeof a is 'function' then [a]
-      when 'x' then [a]
-      else throw Error 'Bad type symbol, ' + JSON.stringify ts
+  if ts.length is 1
+    coerceHelper a, ts
   else
-    throw Error 'Bad type signature, ' + JSON.stringify ts
+    return unless a.length is ts.length
+
+    coerced = _(_(a).zip(ts)).map ([e, t]) ->
+      coerceHelper e, t
+    return unless _(coerced).every _.identity
+    [].concat coerced...
 
 # When given a sequence `q' in case the sequence is actually a string (an array of characters) returns the string,
 # otherwise preservers `q'. `original' is the collection that q was obtained from, used in order to return the proper
