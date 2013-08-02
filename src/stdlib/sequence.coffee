@@ -342,13 +342,12 @@ _ = require '../../lib/underscore'
     any [q, (e) -> uEqual(e, x)]
 )
 
-# TODO enable tests when functions can have more than 2 arguments
 @assv = assv = polymorphic(
-  # assv . [[[1;"one]; [2;"two]]; 2]           - >   "two
-  # assv . [[[1;"one]; [2;"two]; [2;"to]]; 2]  - >   "two
-  # assv . [[[1;"one]; [2;"two]]; 4]           - >   $
-  # assv . [[]; 4]                             - >   $
-  # assv . [[1;2]; 4]                          - >   error 'invalid argument'
+  # assv . [[[1;"one]; [2;"two]]; 2]           ->   "two
+  # assv . [[[1;"one]; [2;"two]; [2;"to]]; 2]  ->   "two
+  # assv . [[[1;"one]; [2;"two]]; 4]           ->   $
+  # assv . [[]; 4]                             ->   $
+  # assv . [[1;2]; 4]                          ->   error 'Invalid argument'
   (q, x) ->
     assv [q, x, null]
 
