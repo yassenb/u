@@ -119,16 +119,23 @@ renderJS = (node) ->
       # {a == b ++ b == 6}; a   ->   6
       # b == 7; {a == b ++ b == 6}; [a;b]   ->   [6;7]
       # {_\(x\(y\(z\[[z1;z2]]))) == a ++ a == [0;1;2;3;[4;5]]}; [x;y;z;z1;z2]   ->   [1;2;3;4;5]
+      # {a == b; b == 7 ++ b == 6}; b   ->   7
       else
-        assignments = node.value.assignments
-        namesToExport = assignmentNames assignments
+        # The following uses the JS trick that once you clone an object with Object.create hasOwnProperty no longer
+        # returns true for any of its fields, only for the ones created/set after the clone
         """
-          helpers.assignmentsWithLocal(ctx,
-            function (ctx) {
-              #{renderJS node.value.local};
-              #{_(assignments).map(renderJS).join ';\n'};
-            },
-            [#{_(namesToExport).map(JSON.stringify).join(',')}])
+          (function (outerCtx) {
+            var ctx = Object.create(outerCtx);
+            #{renderJS node.value.local};
+            ctx = Object.create(ctx);
+            #{_(node.value.assignments).map(renderJS).join ';\n'};
+            for (var name in ctx) {
+              if (ctx.hasOwnProperty(name)) {
+                outerCtx[name] = ctx[name];
+              }
+            }
+            return null;
+          }(ctx))
         """
 
     when 'assignment'
@@ -360,19 +367,3 @@ wrapInClosure = (pattern, valueJS) ->
       return #{renderPatternJS pattern, 'v'};
     }(#{valueJS}))
   """
-
-# TODO unit test
-assignmentNames = (assignments) ->
-  walkExpr = (expr) ->
-    _(expr.value).map (subExpr) ->
-      arg = subExpr.argument.value
-      if arg.type is 'const' and arg.value.type is 'name'
-        arg.value.value
-      else if arg.type is 'sequence'
-        _(arg.value).map walkExpr
-      else if arg.type is 'expr'
-        walkExpr arg
-
-  exprs = _(assignments).map (assignment) ->
-    assignment.value.pattern.value
-  _(_(exprs).map(walkExpr)).flatten()
