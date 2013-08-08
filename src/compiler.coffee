@@ -37,27 +37,27 @@ renderJS = (node) ->
       renderJS node.value
 
     when 'number'
-      # 5           ->   5
-      # ~5          ->   0 - 5
-      # 0-5         ->   ~5
-      # 0.1         ->   0.1
-      # 0.1 + 0.9   ->   1
+      # 5     ->   5
+      # ~5    ->   0 - 5
+      # 0.1   ->   0.1
       node.value.replace /^~/, '-'
 
     when 'string'
       JSON.stringify(
         if /^'\(/.test node.value
-          # '(')rock''n'roll)   ->   '(')rock''n'roll)
-          # '(()                ->   '(()
-          # '('))               ->   ')
-          # #.'('n't')'')       ->   4
-          # '(abc'
-          # ...def)             ->   "abcdef
+          # '(')rock''n'roll) . 0   ->   ')
+          # '(')rock''n'roll) . 1   ->   'r
+          # '(')rock''n'roll) . 5   ->   ''
+          # '(')rock''n'roll) . 7   ->   ''
+          # '(')rock''n'roll) . 8   ->   'r
+          # '(.(.) . 1              ->   '(()
+          # '(.').) . 1             ->   ')
+          # # . '('n't')'')           ->   4
           h = { n: '\n', t: '\t', ')': ')', "'": "'", '\n': '' }
           node.value[2...-1].replace /'[nt\)'\n]/g, (x) -> h[x[1]]
         else
-          # 'a                  ->   '(a)
-          # "Toledo             ->   '(Toledo)
+          # 'a        ->   '(a)
+          # "Toledo   ->   '(Toledo)
           node.value[1...]
       )
 
@@ -79,48 +79,54 @@ renderJS = (node) ->
           throw Error 'Unrecognised constant, ' + JSON.stringify node.value
 
     when 'sequence'
-      # + . [1;2]   ->   3
+      # sum . [3]     ->   3
+      # sum . [1;2]   ->   3
       "[#{_(node.value).map(renderJS).join ','}]"
 
     when 'expr'
-      # 2 + 3 + 4             ->   9
-      # 2 + 3 @{ x :: 7 } 4   ->   7
-
       # Initial "_" must be treated differently from subsequent "_"-s.
       if node.value[0].argument.value is '_'
+        # _   ->   error 'single underscore'
         if node.value.length is 1
           throw Error 'A single underscore cannot be used as an expression.'
 
         if node.value[1].argument.value is '_'
-          # _+_   ->   +
-          r = renderJS node.value[1].operator # currying on both sides returns the function itself
+          # currying on both sides returns the function itself
+          # _+_ . [2;3]   ->   5
+          result = renderJS node.value[1].operator
         else
-          # (_+1).2   ->   3
-          r = "helpers.curryRight(#{renderJS node.value[1].operator},#{renderJS node.value[1].argument})"
+          # (_+1) . 2   ->   3
+          result = "helpers.curryRight(#{renderJS node.value[1].operator},#{renderJS node.value[1].argument})"
 
         i = 2
       else
-        r = renderJS node.value[0].argument
+        result = renderJS node.value[0].argument
         i = 1
 
       _(node.value[i..]).reduce(
-        (r, expr) ->
+        (result, expr) ->
           if expr.argument.value is '_'
-            # (1+_).2   ->   3
-            "helpers.curryLeft(#{renderJS expr.operator}, #{r})"
+            # (1+_) . 2   ->   3
+            "helpers.curryLeft(#{renderJS expr.operator}, #{result})"
           else
-            "(#{renderJS expr.operator})([#{r},#{renderJS expr.argument}])"
-        r
+            # 2                     ->   2
+            # 2 + 3 + 4             ->   9
+            # 2 + 3 @{ x :: 7 } 4   ->   7
+            "(#{renderJS expr.operator})([#{result},#{renderJS expr.argument}])"
+        result
       )
 
     when 'def'
       if node.value.assignment
         renderJS node.value.assignment
-      # {a == b ++ b == 6}; a   ->   6
-      # b == 7; {a == b ++ b == 6}; [a;b]   ->   [6;7]
-      # {_\(x\(y\(z\[[z1;z2]]))) == a ++ a == [0;1;2;3;[4;5]]}; [x;y;z;z1;z2]   ->   [1;2;3;4;5]
-      # {a == b; b == 7 ++ b == 6}; b   ->   7
       else
+        # {a == b ++ b == 6}; a                       ->   6
+        # b == 7; {a == b ++ b == 6}; [a;b]           ->   [6;7]
+        # {a == b; b == 7 ++ b == 6}; b               ->   7
+        # {a == b ++ {b == c ++ c == 6}}; a           ->   6
+        # b == 4; {a == b ++ {b == c ++ c == 6}}; b   ->   4
+        # {_\(x\(y\(z\[[z1;z2]]))) == a ++ a == [0;1;2;3;[4;5]]}; [x;y;z;z1;z2]   ->   [1;2;3;4;5]
+        #
         # The following uses the JS trick that once you clone an object with Object.create hasOwnProperty no longer
         # returns true for any of its fields, only for the ones created/set after the clone
         """
@@ -139,8 +145,8 @@ renderJS = (node) ->
         """
 
     when 'assignment'
-      # a==1; a             ->   1
-      # a==2+1; a           ->   3
+      # a == 1; a     ->   1
+      # a == 2+1; a   ->   3
       renderPatternJS node.value.pattern.value, renderJS node.value.expr
 
     when 'local'
@@ -151,15 +157,16 @@ renderJS = (node) ->
 
     when 'parametric'
       # {a + b ++ a == 6; b == 5}   ->   11
+      # a == 4; {a ++ a == 6}; a    ->   4
       withLocal node.value.local, renderJS node.value.expr
 
     when 'conditional'
-      # ?{1::2;3}   ->   2
-      # ?{0::2;3}   ->   3
-      # ?{0::2}     ->   $
-      # TODO negative test cases
-      # ?{$f::2;$t::3;4}   ->   3
-      # ?{x::2;y::3;4 ++ x==$f; y==$t}   ->   3
+      # ?{$t :: 2; 3}                     ->   2
+      # ?{$f :: 2; 3}                     ->   3
+      # ?{6 * 8 = 42 :: 2}                ->   $
+      # ?{$f :: 2; $t :: 3; 4}            ->   3
+      # ?{$t :: x + 2 ++ x == 5}          ->   7
+      # a == 4; ?{$t :: 5 ++ a == 6}; a   ->   4
       r = _(node.value.tests).reduce(
         (r, test) ->
           r + "(#{renderJS test.condition})?(#{renderJS test.expr}):"
@@ -169,45 +176,74 @@ renderJS = (node) ->
       withLocal node.value.local, r
 
     when 'function'
-      # @{:: 123} . 3                      ->   123
-      # @{a :: a+2} . 3                    ->   5
-      # x==5; @{:: x} . $                  ->   5
-      # x==5; f==@{:: x}; x==6; f . x      ->   6
-      # TODO the above test is wrong---a name cannot be associated with multiple values
-      # TODO test that creating a new function creates a new context
-      # @{1 :: 2} . 1                      ->   2
-      # @{1 :: 2} . 3                      ->   $
-      # @{x :: x+y ++ y==1} . 2            ->   3
-      # @{a (1) :: a+2} . 3                ->   5
-      # @{(1) :: 123} . 3                  ->   123
-      # @{a (0) :: a+2; a ($t) :: 6} . 3   ->   6
-      # 5 @{[x;y]::x+y+y} 3                ->   11
-      # @{[x;y]::x+y+y} . 3                ->   $
+      # no pattern and no guard
+      # @{::} . 3       ->   $
+      # @{:: 123} . 3   ->   123
       #
-      # each clause should be evaluated in its own context
+      # patterns
+      # @{a :: a+2} . 3   ->   5
+      # @{1 :: 2} . 1     ->   2
+      # @{  1 :: 2;
+      # ... 3 :: 5} . 3   ->   5
+      # @{1 :: 2} . 3     ->   $
+      #
+      # guards
+      # @{($t) :: 123} . 3              ->   123
+      # x == 5; @{(x > 4) :: 123} . 3   ->   123
+      # x == 5; @{(x > 5) :: 123;
+      # ...       (x > 4) :: 7} . 3     ->   7
+      #
+      # both patterns and guards
+      # @{a ($t) :: a+2} . 3   ->   5
+      #
+      # can have locals
+      # @{x :: x+y ++ y==1} . 2            ->   3
+      # x == 6; @{:: x ++ x == 5} . 2; x   ->   6
+      #
+      # static scoping
+      # x==5; f==@{:: x}; {f . 1 ++ x == 6}   ->   5
+      #
+      # each clause is evaluated in its own context
       # x == 6; @{x (x > 5) :: 5; _ ($t) :: x} . 3   ->   6
+      #
+      # fucntions keep correct references to their context
+      # f == @{$t :: @{ :: @@}; $f :: 5}.$t; f.$t.$f   ->   5
       resultJS = ''
       for { functionlhs: { value: { pattern, guard } }, body }, i in _(node.value.clauses).pluck 'value'
         # A missing pattern or guard defaults to that from the previous clause.
+        #
         # @{x (x>5) :: 1;
         # ... (x>4) :: 2;
         # ... (x>3) :: 3} . 4   ->   3
+        # @{  x (x>5) :: 1;
+        # ...   (x>4) :: 2;
+        # ... y (y>3) :: 2;
+        # ...   (y>2) :: 3} . 3   ->   3
+        #
         # @{x (x>5) :: 1;
         # ...       :: 1;
         # ...       :: 1;
         # ... ($t)  :: 2} . 4   ->   2
-        # @{  _ :: ;
-        # ...   :: ;
-        # ...   :: 1;
-        # ...   :: 2} . 4   ->   1
+        # @{  x   (x>5)  :: 1;
+        # ...            :: 1;
+        # ...            :: 1;
+        # ... x\y (x>3)  :: 2;
+        # ... x          :: 3} . 4   ->   3
         resultingPattern = pattern or resultingPattern or node.value.clauses[i - 1]?.value.functionlhs.pattern
         resultingGuard = guard or resultingGuard or node.value.clauses[i - 1]?.value.functionlhs.guard
 
         # A missing body defaults to the next clause's body.
-        unless resultingBody = body or resultingBody
+        #
+        # @{  _ :: ;
+        # ...   :: ;
+        # ...   :: 1;
+        # ...   :: 2} . 4   ->   1
+        # @{  ($f) :: 1;
+        # ... ($t) :: ;
+        # ...      :: 2} . 4   ->   2
+        unless body
           for clause in node.value.clauses[i+1..]
             if body = clause.value.body
-              resultingBody = body
               break
 
         resultJS += """
@@ -215,17 +251,17 @@ renderJS = (node) ->
               var enter = (#{if resultingPattern? then renderPatternJS resultingPattern.value, 'arg' else 'true'}) &&
                           (#{if resultingGuard? then renderJS resultingGuard.value else 'true'});
               if (enter) {
-                  body = (#{if resultingBody? then renderJS resultingBody else 'null'});
+                  body = (#{if body? then renderJS body else 'null'});
               }
               return enter;
           }) ||
         """
-      resultJS += 'null'
+      resultJS += 'null;'
 
       resultJS = """
         helpers.createLambda(ctx, function (arg, ctx) {
             var body = null;
-            #{resultJS};
+            #{resultJS}
             return body;
         })
       """
@@ -240,6 +276,7 @@ renderJS = (node) ->
         """
 
       resultJS
+
     else
       throw Error 'Compiler error: Unrecognised node type, ' + node.type
 
@@ -257,17 +294,17 @@ withLocal = (local, expression) ->
 nameToJS = (name) ->
   if /^[a-z_\$][a-z0-9_\$]*$/i.test name
     "ctx.#{name}"
-  # @{n (n > 0) :: n\(@.(n-1));
-  # ...    ($t) :: []}.3   ->   [3;2;1]
-  # @{ $f :: @{ :: @{ :: @@@.$t }.$t}.$t;
-  # ... _ :: 5}.$f   ->   5
-  # @{  $f :: a;
-  # ... _  :: 5
-  # ... ++ a == @.$t} . $f   ->   5
-  # @{  $t :: a;
-  # ... $f :: 5
-  # ... ++ a == @{$t :: @.$f; $f :: @@.$f}.$t} . $t   ->   5
   else if name.match /^@+$/
+    # @{n (n > 0) :: n\(@.(n-1));
+    # ...    ($t) :: []}.3   ->   [3;2;1]
+    # @{ $f :: @{ :: @{ :: @@@.$t }.$t}.$t;
+    # ... _ :: 5}.$f   ->   5
+    # @{  $f :: a;
+    # ... _  :: 5
+    # ... ++ a == @.$t} . $f   ->   5
+    # @{  $t :: a;
+    # ... $f :: 5
+    # ... ++ a == @{$t :: @.$f; $f :: @@.$f}.$t} . $t   ->   5
     parentChain = ''
     _(name.length - 1).times ->
       parentChain += '._parent'

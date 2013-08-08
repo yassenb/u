@@ -4,8 +4,6 @@
 @withNewContext = (ctx, f) ->
   f Object.create(ctx)
 
-# f == @{ :: @{ :: x} ++ x == 4}.$t; x == 5; f.$t   ->   4
-# f == @{$t :: @{ :: @@}; $f :: 5}.$t; f.$t.$f      ->   5
 @createLambda = (ctx, f) ->
   newCtx = Object.create ctx
   newCtx._parent = ctx
