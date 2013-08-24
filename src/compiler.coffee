@@ -145,9 +145,11 @@ renderJS = (node) ->
         """
 
     when 'assignment'
-      # a == 1; a     ->   1
-      # a == 2+1; a   ->   3
-      renderPatternJS node.value.pattern.value, renderJS node.value.expr
+      # a == 1; a      ->   1
+      # a == 2+1; a    ->   3
+      # [x;y] == [1]   ->   error 'Pattern matching'
+      renderPatternJS(node.value.pattern.value, renderJS node.value.expr) +
+        ' || (function () { throw Error(\'Pattern matching failure\') })()'
 
     when 'local'
       _(node.value).map(renderJS).join ';\n'
@@ -185,7 +187,6 @@ renderJS = (node) ->
       # @{1 :: 2} . 1     ->   2
       # @{  1 :: 2;
       # ... 3 :: 5} . 3   ->   5
-      # @{1 :: 2} . 3     ->   $
       #
       # guards
       # @{($t) :: 123} . 3              ->   123
@@ -256,7 +257,9 @@ renderJS = (node) ->
               return enter;
           }) ||
         """
-      resultJS += 'null;'
+      # @{1 :: 2} . 3      ->   error 'No function definition'
+      # @{($f) :: 2} . 3   ->   error 'No function definition'
+      resultJS += '(function () { throw Error(\'No function definition for given input\') })()'
 
       resultJS = """
         helpers.createLambda(ctx, function (arg, ctx) {
