@@ -326,19 +326,21 @@ renderPatternJS = (pattern, valueJS) ->
     return renderPatternJS pattern.value, valueJS
 
   if pattern.length is 1
+    # TODO are "_ == 1" and "5 == 5" valid expressions?
     value = pattern[0].argument.value
     if value is '_'
-      # _==1; $   ->   $
+      # [x;_] == [4;2]; x       ->   4
+      # [x;_;_] == [5;4;2]; x   ->   5
       'true'
     else if value.type is 'const'
       value = value.value
       if value.type is 'name'
-        # a==1; a+a   ->   2
+        # [x;y] == [1;2]; x + y   ->   3
         "#{nameToJS value.value}=(#{valueJS}),true"
       else
-        # [a;1]==[2;1]; a      ->   2
-        # ['a;a]==['a;'b]; a   ->   'b
-        # [$t;$f;$pinf;$;a]==[$t;$f;$pinf;$;[1;2;3]]; a   ->   [1;2;3]
+        # [a;1] == [2;1]; a      ->   2
+        # ['a;a] == ['a;'b]; a   ->   'b
+        # [$t;a] == [$t;5]; a    ->   5
         "#{valueJS}===(#{renderJS value})"
     else if value.type is 'expr'
       renderPatternJS value, valueJS
@@ -347,8 +349,11 @@ renderPatternJS = (pattern, valueJS) ->
     else if valueJS isnt 'v'
       wrapInClosure pattern, valueJS
     else if value.type is 'sequence'
-      # [x;[y;z]]==[1;[2;3]]; x+y+z   ->   6
-      # @{[] :: $t; _ :: $f} . []     ->   $t
+      # [x;[y;z]] == [1;[2;3]]; x+y+z               ->   6
+      # @{[] :: $t; _ :: $f} . []                   ->   $t
+      # @{[x;[y;z]] :: $t; _ :: $f} . [1;[2;3;4]]   ->   $f
+      # @{[x;[y;z]] :: $t; _ :: $f} . [1;[2]]       ->   $f
+      # @{[x;[y;z]] :: $t; _ :: $f} . "abc          ->   $f
       sequence = value.value
       _(sequence).reduce(
         (r, elem, i) ->
@@ -356,7 +361,7 @@ renderPatternJS = (pattern, valueJS) ->
         "#{valueJS} instanceof Array && #{valueJS}.length===#{sequence.length}"
       )
     else
-      # TODO test
+      # { a ++ b == 6 } == 5   ->   error 'Invalid pattern'
       throw Error 'Invalid pattern'
 
   else
@@ -377,27 +382,28 @@ renderPatternJS = (pattern, valueJS) ->
         # x\(y\z)==[1;2;3]; [x;y;z]   ->   [1;2;[3]]
         # x\y\z==[[1;2];3]; [x;y;z]   ->   [1;[2];[3]]
         # x\y==[1]; [x;y]             ->   [1;[]]
-        # TODO x\y==[] should throw
+        # x\y==[]                     ->   error 'Pattern'
         """
           #{valueJS} instanceof Array &&
-          #{valueJS}.length &&
+          #{valueJS}.length > 0 &&
           (#{renderPatternJS leftArg, valueJS + '[0]'}) &&
           (#{renderPatternJS rightArg, valueJS + '.slice(1)'})
         """
       when '/'
-        # x/y==[1;2]; [x;y]         ->   [[1];2]
-        # x/y/z==[1;2;3]; [x;y;z]   ->   [[1];2;3]
-        # x\y/z==[1;2;3]; [x;y;z]   ->   [1;[2];3]
-        # x/y==[1]; [x;y]           ->   [[];1]
-        # TODO x/y==[] should throw
+        # x/y==[1;2]; [x;y]             ->   [[1];2]
+        # x/y/z==[1;2;3]; [x;y;z]       ->   [[1];2;3]
+        # x/(y/z)==[1;[2;3]]; [x;y;z]   ->   [[1];[2];3]
+        # x/y==[1]; [x;y]               ->   [[];1]
+        # x\y/z==[1;2;3]; [x;y;z]       ->   [1;[2];3]
+        # x/y==[]                       ->   error 'Pattern'
         """
           #{valueJS} instanceof Array &&
-          #{valueJS}.length &&
+          #{valueJS}.length > 0 &&
           (#{renderPatternJS leftArg, valueJS + '.slice(0,-1)'}) &&
           (#{renderPatternJS rightArg, "#{valueJS}[#{valueJS}.length - 1]"})
         """
       else
-        # x+y==3   ->   error 'pattern'
+        # x+y == 3               ->   error 'pattern'
         # x (_/_) y == [1;2;3]   ->   error 'pattern'
         throw Error 'Invalid pattern, only \\ and / are allowed'
 
