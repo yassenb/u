@@ -409,9 +409,17 @@ _ = require '../../lib/underscore'
     result
 )
 
-# TODO
 @iterate = polymorphic(
+  # iterate . [@{x :: 2 * x}; 0; 1]    ->   [1]
+  # iterate . [@{x :: 2 * x}; 1; 1]    ->   [1; 2]
+  # iterate . [@{x :: 2 * x}; 4; 1]    ->   [1; 2; 4; 8; 16]
+  # iterate . [@{x :: 2 * x}; ~3; 1]   ->   error 'non-negative'
   (f, i, x) ->
+    throw Error 'iterate takes a non-negative number' if i < 0
+
+    result = [x]
+    _.times i, -> result.push f(_(result).last())
+    result
 )
 
 @eqseq = eqseq = polymorphic(
