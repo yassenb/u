@@ -1,6 +1,7 @@
 _ = require '../../lib/underscore'
 
 {polymorphic} = require './base'
+{Random} = require './util/random'
 
 @int = polymorphic(
   # int.~1        ->   ~1
@@ -77,4 +78,24 @@ _ = require '../../lib/underscore'
     if _(result).isNaN() then null else result
 )
 
-# TODO random n1 n2
+rand = new Random
+@random = polymorphic(
+  # a == random . [5; ~1]; a < 5 & (a >= 0)    ->   $t
+  # random . [4.5; ~1] < 5                     ->   $t
+  # a == random . [1; ~1]; a < 1 & (a >= 0)    ->   $t
+  # a == random . [0; ~1]; a < 1 & (a >= 0)    ->   $t
+  # a == random . [~5; ~1]; a < 1 & (a >= 0)   ->   $t
+  #     [random . [100; 6]; random . [100; ~1]; random . [100; ~1]] =
+  # ... [random . [100; 6]; random . [100; ~1]; random . [100; ~1]]   ->   $t
+  (n1, n2) ->
+    # TODO how does rounding happen, like in |: or like in JS?
+    n1 = Math.round(n1)
+    n2 = Math.round(n2)
+
+    rand.reSeed(n2) if n2 >= 0
+
+    if n1 >= 2
+      rand.randn(n1)
+    else
+      rand.randf()
+)
