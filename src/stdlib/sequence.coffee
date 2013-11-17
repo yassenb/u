@@ -351,7 +351,7 @@ _ = require '../../lib/underscore'
   (q, x) ->
     assv [q, x, null]
 
-  # assv . [[[1;"one];[2;"two]]; 4; "four]   - >   "four
+  # assv . [[[1;"one];[2;"two]]; 4; "four]   ->   "four
   (q, x1, x2) ->
     for x in _(q).toArray()
       unless x instanceof Array and x.length is 2
