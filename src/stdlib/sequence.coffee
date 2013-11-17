@@ -573,7 +573,24 @@ ensureSequence = (e, errorMessage) ->
     qToString result, q1[0]
 )
 
-# TODO flatten
+@flatten = flatten = polymorphic(
+  # flatten . 5                      ->   5
+  # flatten . []                     ->   []
+  # flatten . [[]]                   ->   []
+  # flatten . [5]                    ->   [5]
+  # flatten . [[5]]                  ->   [5]
+  # flatten . [[5];6;[];[7;[8;9]]]   ->   [5;6;7;8;9]
+  # flatten . '()                    ->   '()
+  # flatten . "hell                  ->   "hell
+  # flatten . ["hell;"no]            ->   ["hell;"no]
+  (x) ->
+    return x unless x instanceof Array
+    _(x).foldl(
+      (init, v) ->
+        init.concat if v instanceof Array then flatten(v) else [v]
+      []
+    )
+)
 
 @cart = polymorphic(
   # cart . "abc   ->   error 'sequence of sequences'
