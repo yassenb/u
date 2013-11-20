@@ -1,5 +1,6 @@
 _ = require '../lib/underscore'
 
+# TODO do we want unicode support?
 # The lexer transforms source code into a stream of tokens.
 #
 # It does so by trying to match regular expressions at the current source
