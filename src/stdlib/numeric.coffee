@@ -2,6 +2,7 @@ _ = require '../../lib/underscore'
 
 {polymorphic} = require './base'
 {Random} = require './util/random'
+{approximate} = require './util/best-rational-approximation'
 
 @int = polymorphic(
   # int.~1        ->   ~1
@@ -15,7 +16,26 @@ _ = require '../../lib/underscore'
     if n >= 0 then Math.floor n else Math.ceil n
 )
 
-# TODO rat n i
+@rat = polymorphic(
+  # $pi rat 1     ->   [3;0;1]
+  # $pi rat 2     ->   [3;0;1]
+  # $pi rat 4     ->   [3;1;4]
+  # $pi rat 5     ->   [3;1;5]
+  # $pi rat 7     ->   [3;1;7]
+  # $pi rat 105   ->   [3;14;99]
+  # $pi rat 106   ->   [3;15;106]
+  # 2.4 rat 10    ->   [2;2;5]
+  # 2.5 rat 10    ->   [2;1;2]
+  # -.$pi rat 7   ->   [~3;1;7]
+  # 5 rat 1       ->   [5;0;1]
+  # 5 rat 100     ->   [5;0;1]
+  (n, i) ->
+    throw Error "rat takes a positive limit for the denominator, #{i} given" if i <= 0
+
+    result = approximate Math.abs(n), i
+    result[0] = -result[0] if n < 0
+    result
+)
 
 @gcd = gcd = polymorphic(
   # 12 gcd 30   ->   6
